@@ -63,7 +63,11 @@
 - code: phys_neuro
   name: phys.org Neuroscience
   type: rss
-  level: A
+  # 2026-11-26 实采：30 条全是社会科学（AI 与数学、媒体自由、鹿骨、发酵奶、恋爱、购物、罢工…），
+  # 与「脑机/意识」相关内容 0 条 → 源级降 B 只用于分组与统计。
+  # 注意：phys.org 在域名规则表里是 A，所以文章级仍是 rule2:phys.org = A，
+  # 相关性只能靠 effective_ratio_7d + 05 的 is_event 暴露（见 03 §5.4 S6、05 §7）。
+  level: B
   url: https://phys.org/rss-feed/science-news/neuroscience/
   query_template: null
   poll_interval_min: 30
@@ -71,7 +75,7 @@
   expected_domains: [phys.org]
   title_suffix_rules: [" - phys.org"]
   api_key_env: null
-  note: 原地址 404，已换新地址；200 / 30 条
+  note: 原地址 404，已换新地址；200 / 30 条。**S6 内容跑偏样本**：30 条全是社会科学，与选题无关；源级已降 B
   expected_status_on_first_run: ok
 
 - code: sd_bci
