@@ -41,6 +41,9 @@ def find_pending_item_ids(session: Session, limit: int | None = None) -> list[in
         .where(
             RawItem.full_text_status == "pending",
             RawItem.url.is_not(None),
+            # 聚合源（google_news / api）的 url 是跳转链，不回溯就拿不到原文，
+            # 抓了也只是 SPA 壳 → 这类条目在 collector 里已直接落 blocked，这里再挡一层
+            RawItem.resolved_url.is_not(None),
         )
         .order_by(RawItem.fetched_at.asc())
         .limit(batch)

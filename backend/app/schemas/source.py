@@ -407,9 +407,10 @@ class DomainRuleItem(ORMModel):
     level: Level
     note: str | None = None
     enabled: bool
-    # TODO(口径)：03 §8.3 要"近 30 天命中数"，但 article.source_level_reason 是
-    # `rule2:domain` 的字符串，精确统计需要 join raw_item（太贵）。当前恒返回 0。
-    hit_count_30d: int = 0
+    # 暂不可用（已与需求方确认）：03 §8.3 要"近 30 天命中数"，但表结构没有计数列，
+    # 靠 article.source_level_reason 做 LIKE 统计既不准又要扫大表。**恒为 null**，
+    # 前端显示「—」，不要显示 0（0 会被读成"没有命中"）。
+    hit_count_30d: int | None = None
 
 
 class DomainRuleCreateResponse(DomainRuleItem):

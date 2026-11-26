@@ -29,7 +29,7 @@
   expected_domains: [esa.int]
   title_suffix_rules: [" - ESA", " | ESA"]
   api_key_env: null
-  note: 需求点名源；连接被中断，备用地址也超时。保留配置待换机复测
+  note: 需求点名源；2026-11-26 实测 HTTP 404（更早一次为连接中断），地址已失效，保留配置待确认新地址
   expected_status_on_first_run: down
 
 - code: fnal_news

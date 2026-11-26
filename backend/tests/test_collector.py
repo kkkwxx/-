@@ -217,3 +217,60 @@ def test_rule6_upserts_unknown_domain(session, make_source):
     )
     session.flush()
     assert session.execute(select(UnknownDomain)).scalar_one().hit_count == 2
+
+
+def test_aggregator_item_lands_blocked_not_pending(session, make_source):
+    """GN/API 不回溯 → 正文定位不到，直接落 blocked + 回退摘要，不占待补队列。"""
+    source = make_source(code="s_gn", type="google_news", level="B")
+    draft = _draft(
+        source.id,
+        url="https://news.google.com/rss/articles/CBMi_xxx?oc=5",
+        resolved_url=None,
+        publisher_url="https://www.xinhuanet.com",
+        summary="暗物质探测新进展",
+    )
+    persist_items(session, source, FetchResult(items=[draft]), now=NOW)
+    session.flush()
+
+    row = session.execute(select(RawItem)).scalar_one()
+    assert row.full_text_status == "blocked"
+    assert row.full_text == "暗物质探测新进展"
+    assert row.extra["full_text_hint"] == "aggregator-no-resolved-url"
+    # 聚合源没有原文链接，article 侧标记为未回溯
+    article = session.execute(select(Article)).scalar_one()
+    assert article.resolve_status == "unresolved"
+
+
+def test_pending_queue_excludes_aggregator(session, make_source):
+    from app.services.fulltext import find_pending_item_ids
+
+    rss_source = make_source(code="s_rss_q")
+    gn_source = make_source(code="s_gn_q", type="google_news")
+    persist_items(
+        session,
+        rss_source,
+        FetchResult(items=[_draft(rss_source.id, url="https://www.nasa.gov/a/")]),
+        now=NOW,
+    )
+    persist_items(
+        session,
+        gn_source,
+        FetchResult(
+            items=[
+                _draft(
+                    gn_source.id,
+                    url="https://news.google.com/rss/articles/CBMi_yyy?oc=5",
+                    resolved_url=None,
+                    publisher_url="https://www.xinhuanet.com",
+                )
+            ]
+        ),
+        now=NOW,
+    )
+    session.flush()
+
+    ids = find_pending_item_ids(session, limit=50)
+    rows = session.execute(select(RawItem)).scalars().all()
+    pending_ids = {row.id for row in rows if row.full_text_status == "pending"}
+    assert set(ids) == pending_ids
+    assert len(pending_ids) == 1  # 只有 rss 那条在队列里

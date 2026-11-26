@@ -154,6 +154,9 @@ def persist_items(
             )
 
         has_content = bool(draft.content_encoded)
+        # 聚合源（google_news / api）没有 resolved_url：不回溯就拿不到原文，
+        # 正文永远抽不到。直接落 blocked + 回退摘要，避免待补队列反复抓 SPA 壳。
+        aggregator_no_origin = not has_content and not draft.resolved_url
         raw = RawItem(
             source_id=source.id,
             url=draft.url,
@@ -163,13 +166,28 @@ def persist_items(
             raw_title=draft.title,
             raw_summary=draft.summary,
             content_encoded=draft.content_encoded,
-            full_text=draft.content_encoded if has_content else None,
-            full_text_status="skipped" if has_content else "pending",
+            full_text=(
+                draft.content_encoded
+                if has_content
+                else (draft.summary if aggregator_no_origin else None)
+            ),
+            full_text_status=(
+                "skipped"
+                if has_content
+                else ("blocked" if aggregator_no_origin else "pending")
+            ),
             published_at=draft.published_at,
             published_raw=(draft.published_raw or None) and draft.published_raw[:128],
             author=draft.author,
             fetched_at=draft.fetched_at or now,
-            extra=draft.extra or {},
+            extra=(
+                {
+                    **(draft.extra or {}),
+                    "full_text_hint": "aggregator-no-resolved-url",
+                }
+                if aggregator_no_origin
+                else (draft.extra or {})
+            ),
             url_hash=url_hash,
         )
         session.add(raw)

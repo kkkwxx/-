@@ -40,11 +40,11 @@ ACTION_CREATE_RULE = "create_domain_rule"
 ACTION_UPDATE_RULE = "update_domain_rule"
 ACTION_DELETE_RULE = "delete_domain_rule"
 
-# TODO(口径)：03 §8.3 要 hit_count_30d（近 30 天该规则命中数）。当前表结构里没有
-# 计数列，靠 article.source_level_reason 的 'rule2:domain' 做 LIKE 统计既不准
-# （rule3/rule4/rule5 也是命中）又要扫 article 大表；join raw_item 更贵。
-# 这里统一返回 0，等 AI 层/统计任务落地后再补真实口径（不阻塞本期端点）。
-HIT_COUNT_30D_TODO = 0
+# 暂不可用（已与需求方确认）：03 §8.3 要 hit_count_30d（近 30 天该规则命中数）。
+# 表结构里没有计数列；靠 article.source_level_reason 的 'ruleN:domain' 做 LIKE
+# 统计既不准（rule2—rule6 都算命中）又要扫 article 大表。统一返回 None，
+# 前端显示「—」。要真实口径得加字段或加统计任务，本期不做。
+HIT_COUNT_30D_UNAVAILABLE: int | None = None
 
 
 def _get_rule(db: Session, rule_id: int) -> SourceDomainRule:
@@ -61,7 +61,7 @@ def _get_rule(db: Session, rule_id: int) -> SourceDomainRule:
 
 def _to_item(rule: SourceDomainRule) -> DomainRuleItem:
     item = DomainRuleItem.model_validate(rule)
-    item.hit_count_30d = HIT_COUNT_30D_TODO
+    item.hit_count_30d = HIT_COUNT_30D_UNAVAILABLE
     return item
 
 
