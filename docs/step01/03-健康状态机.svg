@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1060" viewBox="0 0 1600 1060" font-family="Microsoft YaHei, PingFang SC, Segoe UI, sans-serif">
+  <defs>
+    <marker id="ar" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#4a5568"/>
+    </marker>
+    <marker id="arRed" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#c62828"/>
+    </marker>
+    <marker id="arGray" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#9e9e9e"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1060" fill="#ffffff"/>
+
+  <text x="48" y="50" font-size="26" font-weight="700" fill="#1a202c">信源健康状态机（讨论稿）</text>
+  <text x="48" y="80" font-size="15" fill="#5a6472">计数粒度 = 任务级：一次任务内部最多重试 5 次，重试到最终仍失败才 +1；任务一旦成功，连续失败计数立即清零</text>
+
+  <!-- ============ 左：判定依据 ============ -->
+  <rect x="48" y="112" width="392" height="700" rx="14" fill="#f8fafc" stroke="#dbe3ec" stroke-width="1.5"/>
+  <text x="68" y="146" font-size="18" font-weight="700" fill="#2d3748">状态由什么指标判定</text>
+  <text x="68" y="170" font-size="12.5" fill="#7b8794">四类指标，只有第 1 类决定状态灯</text>
+
+  <rect x="66" y="188" width="356" height="128" rx="10" fill="#fff" stroke="#e2e8f0"/>
+  <text x="82" y="212" font-size="14.5" font-weight="700" fill="#1b5e20">① 可用性（决定状态灯）</text>
+  <text x="82" y="238" font-size="13" fill="#37474f">· 最近一次任务 成功 / 失败</text>
+  <text x="82" y="262" font-size="13" fill="#37474f">· consecutive_failures（连续失败任务数）</text>
+  <text x="82" y="286" font-size="13" fill="#37474f">· 近 7 天成功率 = 成功任务 / 总任务</text>
+  <text x="82" y="306" font-size="11.5" fill="#c62828">✗ 不是 HTTP 200 次数（会因重试而虚高）</text>
+
+  <rect x="66" y="330" width="356" height="140" rx="10" fill="#fff" stroke="#e2e8f0"/>
+  <text x="82" y="354" font-size="14.5" font-weight="700" fill="#37474f">② 有效性（决定“还有没有用”）</text>
+  <text x="82" y="380" font-size="13" fill="#37474f">· 近 7 天采回条数</text>
+  <text x="82" y="404" font-size="13" fill="#37474f">· 有效条数比例 = 通过规则过滤 / 采回总数</text>
+  <text x="82" y="428" font-size="13" fill="#37474f">· 连续 empty_feed 次数</text>
+  <text x="82" y="454" font-size="11.5" fill="#8d6e63">实测：Watchers 200 / 10 条，但全是地震新闻</text>
+
+  <rect x="66" y="484" width="356" height="100" rx="10" fill="#fff" stroke="#e2e8f0"/>
+  <text x="82" y="508" font-size="14.5" font-weight="700" fill="#37474f">③ 效率</text>
+  <text x="82" y="534" font-size="13" fill="#37474f">· 平均耗时（判断该不该降频）</text>
+  <text x="82" y="560" font-size="11.5" fill="#7b8794">实测：fetch 0.2—6.7 s，extract 3—103 ms</text>
+
+  <rect x="66" y="598" width="356" height="100" rx="10" fill="#fff" stroke="#e2e8f0"/>
+  <text x="82" y="622" font-size="14.5" font-weight="700" fill="#37474f">④ 新鲜度</text>
+  <text x="82" y="648" font-size="13" fill="#37474f">· now − last_success_at 与 poll_interval 的倍数</text>
+  <text x="82" y="674" font-size="11.5" fill="#7b8794">超过 3× 间隔没成功 → 一律按异常处理</text>
+
+  <text x="68" y="736" font-size="13" font-weight="700" fill="#c62828">不做 0—100 健康分</text>
+  <text x="68" y="758" font-size="12.5" fill="#5a6472">分数无法解释、阈值无从校准；</text>
+  <text x="68" y="778" font-size="12.5" fill="#5a6472">“状态灯 + 三个数字”可解释性更强。</text>
+
+  <!-- ============ 右：状态机 ============ -->
+  <g>
+    <!-- down -->
+    <rect x="660" y="150" width="200" height="80" rx="12" fill="#ffebee" stroke="#c62828" stroke-width="2"/>
+    <text x="760" y="180" font-size="19" font-weight="700" fill="#b71c1c" text-anchor="middle">down</text>
+    <text x="760" y="202" font-size="13.5" fill="#8e2020" text-anchor="middle">失效</text>
+    <text x="760" y="222" font-size="11.5" fill="#a44444" text-anchor="middle">连续失败 ≥ 10 次任务</text>
+
+    <!-- degraded -->
+    <rect x="660" y="340" width="200" height="80" rx="12" fill="#fff8e1" stroke="#f9a825" stroke-width="2"/>
+    <text x="760" y="370" font-size="19" font-weight="700" fill="#8d6e00" text-anchor="middle">degraded</text>
+    <text x="760" y="392" font-size="13.5" fill="#8d6e00" text-anchor="middle">可疑</text>
+    <text x="760" y="412" font-size="11.5" fill="#a08b3a" text-anchor="middle">连续失败 3—9 次任务</text>
+
+    <!-- ok -->
+    <rect x="660" y="530" width="200" height="80" rx="12" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2.5"/>
+    <text x="760" y="560" font-size="19" font-weight="700" fill="#1b5e20" text-anchor="middle">ok</text>
+    <text x="760" y="582" font-size="13.5" fill="#1b5e20" text-anchor="middle">正常</text>
+    <text x="760" y="602" font-size="11.5" fill="#3d7a41" text-anchor="middle">最近一次成功且有条目</text>
+
+    <!-- starved -->
+    <rect x="660" y="720" width="200" height="80" rx="12" fill="#eceff1" stroke="#607d8b" stroke-width="2" stroke-dasharray="6 4"/>
+    <text x="760" y="750" font-size="18" font-weight="700" fill="#37474f" text-anchor="middle">starved</text>
+    <text x="760" y="772" font-size="13" fill="#37474f" text-anchor="middle">空转：活着但没内容</text>
+    <text x="760" y="792" font-size="11.5" fill="#607d8b" text-anchor="middle">连续 3 次成功但 0 条</text>
+
+    <!-- auth_error -->
+    <rect x="1020" y="340" width="200" height="80" rx="12" fill="#ede7f6" stroke="#5e35b1" stroke-width="2"/>
+    <text x="1120" y="370" font-size="19" font-weight="700" fill="#4527a0" text-anchor="middle">auth_error</text>
+    <text x="1120" y="392" font-size="13.5" fill="#4527a0" text-anchor="middle">鉴权失败</text>
+    <text x="1120" y="412" font-size="11.5" fill="#6a5aa0" text-anchor="middle">HTTP 401 / 403</text>
+
+    <!-- disabled -->
+    <rect x="1020" y="530" width="200" height="80" rx="12" fill="#f5f5f5" stroke="#9e9e9e" stroke-width="2"/>
+    <text x="1120" y="560" font-size="19" font-weight="700" fill="#424242" text-anchor="middle">disabled</text>
+    <text x="1120" y="582" font-size="13.5" fill="#424242" text-anchor="middle">人工停用</text>
+    <text x="1120" y="602" font-size="11.5" fill="#757575" text-anchor="middle">enabled = false</text>
+
+    <!-- 箭头 ok→degraded -->
+    <line x1="720" y1="528" x2="720" y2="424" stroke="#4a5568" stroke-width="1.8" marker-end="url(#ar)"/>
+    <text x="712" y="474" font-size="12.5" fill="#4a5568" text-anchor="end">任务失败 ×3</text>
+
+    <!-- 箭头 degraded→ok -->
+    <line x1="800" y1="422" x2="800" y2="526" stroke="#4a5568" stroke-width="1.8" marker-end="url(#ar)"/>
+    <text x="808" y="474" font-size="12.5" fill="#2e7d32">一次成功</text>
+
+  <!-- 返回：down→ok（左侧旁路，避开 401/403 箭头） -->
+  <path d="M658,190 L600,190 L600,570 L656,570" fill="none" stroke="#2e7d32" stroke-width="1.8" stroke-dasharray="7 4" marker-end="url(#ar)"/>
+  <text x="586" y="380" font-size="12" fill="#2e7d32" text-anchor="middle" transform="rotate(-90 586 380)">一次成功：清零并回到 ok</text>
+
+    <!-- 箭头 degraded→down -->
+    <line x1="760" y1="338" x2="760" y2="234" stroke="#c62828" stroke-width="1.8" marker-end="url(#arRed)"/>
+    <text x="752" y="292" font-size="12.5" fill="#c62828" text-anchor="end">失败累计 ≥ 10</text>
+
+    <!-- 箭头 degraded→auth_error -->
+    <line x1="862" y1="368" x2="1016" y2="368" stroke="#5e35b1" stroke-width="1.8" marker-end="url(#ar)"/>
+    <text x="939" y="358" font-size="12" fill="#4527a0" text-anchor="middle">401 / 403</text>
+
+    <!-- 箭头 ok→disabled -->
+    <line x1="862" y1="550" x2="1016" y2="550" stroke="#9e9e9e" stroke-width="1.8" marker-end="url(#arGray)"/>
+    <text x="939" y="540" font-size="12" fill="#616161" text-anchor="middle">后台 enabled=false</text>
+    <!-- disabled→ok -->
+    <line x1="1016" y1="592" x2="866" y2="592" stroke="#9e9e9e" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#arGray)"/>
+    <text x="939" y="612" font-size="12" fill="#616161" text-anchor="middle">后台重新启用（人工）</text>
+
+    <!-- 箭头 ok→starved -->
+    <line x1="720" y1="612" x2="720" y2="714" stroke="#607d8b" stroke-width="1.8" marker-end="url(#ar)"/>
+    <text x="712" y="668" font-size="12.5" fill="#37474f" text-anchor="end">连续 3 次成功但 0 条</text>
+    <!-- starved→ok -->
+    <line x1="800" y1="718" x2="800" y2="616" stroke="#607d8b" stroke-width="1.8" marker-end="url(#ar)"/>
+    <text x="808" y="668" font-size="12.5" fill="#37474f">采回 ≥ 1 条</text>
+  </g>
+
+  <!-- ============ 底部：规则与排序 ============ -->
+  <rect x="48" y="838" width="1504" height="196" rx="14" fill="#f8fafc" stroke="#dbe3ec" stroke-width="1.5"/>
+  <text x="68" y="870" font-size="17" font-weight="700" fill="#2d3748">三条必须写进代码的规则</text>
+
+  <text x="68" y="902" font-size="13.5" font-weight="700" fill="#1a202c">规则 1｜401 / 403 从任意运行状态进入 auth_error</text>
+  <text x="68" y="924" font-size="12.5" fill="#5a6472">这条只能人工修（换 key 后手工重置），系统不自动重试到成功。</text>
+
+  <text x="68" y="956" font-size="13.5" font-weight="700" fill="#1a202c">规则 2｜starved 状态下任务失败，同样累计 consecutive_failures</text>
+  <text x="68" y="978" font-size="12.5" fill="#5a6472">即“空转”不等于“豁免”，连续失败照样升级到 degraded / down。</text>
+
+  <text x="68" y="1010" font-size="13.5" font-weight="700" fill="#1a202c">规则 3｜disabled 与 health_status 是两套语义，不能混用</text>
+  <text x="68" y="1032" font-size="12.5" fill="#5a6472">enabled=false 由人决定；health_status 由采集写。停用的源保留历史状态，重新启用后先按 3× poll_interval 观察。</text>
+
+  <line x1="880" y1="866" x2="880" y2="1016" stroke="#dbe3ec" stroke-width="1.5"/>
+
+  <text x="910" y="870" font-size="17" font-weight="700" fill="#2d3748">列表默认排序（替代健康分）</text>
+  <text x="910" y="902" font-size="13" fill="#37474f">① 状态严重度：down → auth_error → degraded → starved → ok → disabled</text>
+  <text x="910" y="928" font-size="13" fill="#37474f">② 同状态内：consecutive_failures 降序</text>
+  <text x="910" y="954" font-size="13" fill="#37474f">③ 再同：last_success_at 升序（最久没成功的排最前）</text>
+  <text x="910" y="990" font-size="12.5" fill="#c62828">阈值（3 / 10 / 3）硬编码，但必须在详情页显示出来，</text>
+  <text x="910" y="1012" font-size="12.5" fill="#c62828">否则人看到黄灯不知道该等还是该动手。</text>
+</svg>

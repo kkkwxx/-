@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1240" viewBox="0 0 1600 1240" font-family="Microsoft YaHei, PingFang SC, Segoe UI, sans-serif">
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#4a5568"/>
+    </marker>
+  </defs>
+  <rect width="1600" height="1240" fill="#ffffff"/>
+
+  <text x="48" y="50" font-size="26" font-weight="700" fill="#1a202c">“继承来源等级”什么时候成立、什么时候不成立</text>
+  <text x="48" y="82" font-size="15" fill="#5a6472">同一个动作（给源定级 → 采文章 → 继承等级），在三种源上结果完全不同。差别不在“有没有外链”，在“外链占几条”。</text>
+
+  <!-- ================= ① 真正的新闻网站 ================= -->
+  <rect x="48" y="112" width="1504" height="252" rx="14" fill="#f6fdf7" stroke="#a5d6a7" stroke-width="1.6"/>
+  <text x="68" y="150" font-size="16.5" font-weight="700" fill="#1b5e20">① 一个真正的新闻网站</text>
+  <text x="68" y="176" font-size="12.5" fill="#5a6472">典型：NASA / 新华网 / ScienceDaily</text>
+  <text x="68" y="212" font-size="13.5" font-weight="700" fill="#2e7d32">✅ 你的模型在这里完全成立</text>
+  <text x="68" y="238" font-size="12" fill="#5a6472">feed 就是这家网站自己的订阅出口，</text>
+  <text x="68" y="258" font-size="12" fill="#5a6472">文章全是它自己写的。</text>
+
+  <rect x="400" y="140" width="292" height="104" rx="10" fill="#fff" stroke="#a5d6a7" stroke-width="1.5"/>
+  <text x="418" y="166" font-size="11.5" fill="#7b8794">源 URL（后台里填的那个）</text>
+  <text x="418" y="192" font-size="12.5" font-weight="700" fill="#1a202c">www.nasa.gov/news-release/feed</text>
+  <rect x="418" y="206" width="94" height="24" rx="5" fill="#e8f5e9" stroke="#2e7d32"/>
+  <text x="465" y="223" font-size="12" font-weight="700" fill="#1b5e20" text-anchor="middle">你定级：A</text>
+  <text x="526" y="223" font-size="11" fill="#7b8794">→ 采集 →</text>
+
+  <line x1="692" y1="192" x2="736" y2="192" stroke="#4a5568" stroke-width="2" marker-end="url(#a)"/>
+
+  <rect x="748" y="150" width="116" height="56" rx="8" fill="#e8f5e9" stroke="#2e7d32"/>
+  <text x="806" y="174" font-size="10" fill="#1b5e20" text-anchor="middle">nasa.gov</text>
+  <text x="806" y="194" font-size="12" font-weight="700" fill="#1b5e20" text-anchor="middle">A</text>
+  <rect x="872" y="150" width="116" height="56" rx="8" fill="#e8f5e9" stroke="#2e7d32"/>
+  <text x="930" y="174" font-size="10" fill="#1b5e20" text-anchor="middle">nasa.gov</text>
+  <text x="930" y="194" font-size="12" font-weight="700" fill="#1b5e20" text-anchor="middle">A</text>
+  <rect x="996" y="150" width="116" height="56" rx="8" fill="#e8f5e9" stroke="#2e7d32"/>
+  <text x="1054" y="174" font-size="9" fill="#1b5e20" text-anchor="middle">science.nasa.gov</text>
+  <text x="1054" y="194" font-size="12" font-weight="700" fill="#1b5e20" text-anchor="middle">A</text>
+  <rect x="1120" y="150" width="116" height="56" rx="8" fill="#e8f5e9" stroke="#2e7d32"/>
+  <text x="1178" y="174" font-size="10" fill="#1b5e20" text-anchor="middle">nasa.gov</text>
+  <text x="1178" y="194" font-size="12" font-weight="700" fill="#1b5e20" text-anchor="middle">A</text>
+  <rect x="1244" y="150" width="116" height="56" rx="8" fill="#e8f5e9" stroke="#2e7d32"/>
+  <text x="1302" y="174" font-size="9" fill="#1b5e20" text-anchor="middle">science.nasa.gov</text>
+  <text x="1302" y="194" font-size="12" font-weight="700" fill="#1b5e20" text-anchor="middle">A</text>
+  <text x="1372" y="183" font-size="12" fill="#5a6472">…等 10 条</text>
+
+  <text x="748" y="240" font-size="13" font-weight="700" fill="#2e7d32">结论：10 条域名全在 nasa.gov 下 → 继承 = 全部 A</text>
+  <text x="748" y="264" font-size="12" fill="#5a6472">与“按每条出处重算”的结果完全一致 —— 所以你的直觉在这里是对的。</text>
+
+  <!-- ================= ② 偶尔夹外链 ================= -->
+  <rect x="48" y="384" width="1504" height="252" rx="14" fill="#fffdf6" stroke="#ffcc80" stroke-width="1.6"/>
+  <text x="68" y="422" font-size="16.5" font-weight="700" fill="#8d6e00">② RSS 里偶尔夹一个外链</text>
+  <text x="68" y="448" font-size="12.5" fill="#5a6472">典型：Fermilab（实测 10 条里有 1 条）</text>
+  <text x="68" y="484" font-size="13.5" font-weight="700" fill="#ef6c00">⚠️ 会误判 1 条，影响很小</text>
+  <text x="68" y="510" font-size="12" fill="#5a6472">feed 是 Fermilab 自己的，但它转载了</text>
+  <text x="68" y="530" font-size="12" fill="#5a6472">一家地方小报的报道。</text>
+
+  <rect x="400" y="412" width="292" height="104" rx="10" fill="#fff" stroke="#ffcc80" stroke-width="1.5"/>
+  <text x="418" y="438" font-size="11.5" fill="#7b8794">源 URL</text>
+  <text x="418" y="464" font-size="12.5" font-weight="700" fill="#1a202c">news.fnal.gov/feed</text>
+  <rect x="418" y="480" width="94" height="24" rx="5" fill="#e8f5e9" stroke="#2e7d32"/>
+  <text x="465" y="497" font-size="12" font-weight="700" fill="#1b5e20" text-anchor="middle">你定级：A</text>
+
+  <line x1="692" y1="464" x2="736" y2="464" stroke="#4a5568" stroke-width="2" marker-end="url(#a)"/>
+
+  <rect x="748" y="422" width="116" height="56" rx="8" fill="#e8f5e9" stroke="#2e7d32"/>
+  <text x="806" y="446" font-size="9.5" fill="#1b5e20" text-anchor="middle">news.fnal.gov</text>
+  <text x="806" y="466" font-size="12" font-weight="700" fill="#1b5e20" text-anchor="middle">A</text>
+  <rect x="872" y="422" width="116" height="56" rx="8" fill="#e8f5e9" stroke="#2e7d32"/>
+  <text x="930" y="446" font-size="9.5" fill="#1b5e20" text-anchor="middle">news.fnal.gov</text>
+  <text x="930" y="466" font-size="12" font-weight="700" fill="#1b5e20" text-anchor="middle">A</text>
+  <rect x="996" y="422" width="116" height="56" rx="8" fill="#e8f5e9" stroke="#2e7d32"/>
+  <text x="1054" y="446" font-size="9.5" fill="#1b5e20" text-anchor="middle">news.fnal.gov</text>
+  <text x="1054" y="466" font-size="12" font-weight="700" fill="#1b5e20" text-anchor="middle">A</text>
+  <rect x="1120" y="422" width="116" height="56" rx="8" fill="#fff3e0" stroke="#ef6c00" stroke-width="2"/>
+  <text x="1178" y="446" font-size="9" fill="#e65100" text-anchor="middle">bhpioneer.com</text>
+  <text x="1178" y="466" font-size="12" font-weight="700" fill="#e65100" text-anchor="middle">A ?</text>
+  <text x="1250" y="455" font-size="12" fill="#5a6472">…等 10 条</text>
+
+  <text x="748" y="512" font-size="13" font-weight="700" fill="#ef6c00">结论：9 条 A ✓ ＋ 1 条被误升成 A ✗</text>
+  <text x="748" y="536" font-size="12" fill="#5a6472">地方小报的转载混进“可直接推送”的 A 级里。用 expected_domains 一挡就掉了，代价很小。</text>
+  <text x="748" y="560" font-size="12" fill="#5a6472">→ 这一档，你说的“夹带链接没什么影响”基本成立。</text>
+
+  <!-- ================= ③ 新闻搜索引擎 ================= -->
+  <rect x="48" y="656" width="1504" height="356" rx="14" fill="#fff5f5" stroke="#fc8181" stroke-width="1.8"/>
+  <text x="68" y="694" font-size="16.5" font-weight="700" fill="#9b2c2c">③ Google News：不是新闻网站，是新闻搜索引擎</text>
+  <text x="68" y="720" font-size="12.5" fill="#5a6472">实测 q=中微子 → 44 条，来自 20 多家媒体</text>
+  <text x="68" y="756" font-size="13.5" font-weight="700" fill="#c53030">❌ 继承在这里完全不成立</text>
+  <text x="68" y="782" font-size="12" fill="#9b2c2c">它自己不写新闻，每条结果都是</text>
+  <text x="68" y="802" font-size="12" fill="#9b2c2c">“别人的新闻”的一个跳转链接。</text>
+  <text x="68" y="834" font-size="12" fill="#9b2c2c">类比：这更像「百度搜索结果页」，</text>
+  <text x="68" y="854" font-size="12" fill="#9b2c2c">不像「新华网」。</text>
+
+  <rect x="400" y="684" width="292" height="104" rx="10" fill="#fff" stroke="#fc8181" stroke-width="1.5"/>
+  <text x="418" y="710" font-size="11.5" fill="#7b8794">源 URL（域名是 google.com）</text>
+  <text x="418" y="736" font-size="12" font-weight="700" fill="#1a202c">news.google.com/rss/search?q=中微子</text>
+  <rect x="418" y="750" width="94" height="24" rx="5" fill="#e3f2fd" stroke="#1e88e5"/>
+  <text x="465" y="767" font-size="12" font-weight="700" fill="#0d47a1" text-anchor="middle">你定级：B</text>
+
+  <line x1="692" y1="736" x2="736" y2="736" stroke="#4a5568" stroke-width="2" marker-end="url(#a)"/>
+
+  <rect x="748" y="694" width="116" height="56" rx="8" fill="#e8f5e9" stroke="#2e7d32"/>
+  <text x="806" y="718" font-size="10" fill="#1b5e20" text-anchor="middle">nasa.gov</text>
+  <text x="806" y="738" font-size="12" font-weight="700" fill="#1b5e20" text-anchor="middle">该 A</text>
+  <rect x="872" y="694" width="116" height="56" rx="8" fill="#e3f2fd" stroke="#1e88e5"/>
+  <text x="930" y="718" font-size="8.5" fill="#0d47a1" text-anchor="middle">news.sciencenet.cn</text>
+  <text x="930" y="738" font-size="12" font-weight="700" fill="#0d47a1" text-anchor="middle">该 B</text>
+  <rect x="996" y="694" width="116" height="56" rx="8" fill="#f5f5f5" stroke="#9e9e9e"/>
+  <text x="1054" y="718" font-size="10" fill="#424242" text-anchor="middle">cast.org.cn</text>
+  <text x="1054" y="738" font-size="11" font-weight="700" fill="#616161" text-anchor="middle">未收录</text>
+  <rect x="1120" y="694" width="116" height="56" rx="8" fill="#f5f5f5" stroke="#9e9e9e"/>
+  <text x="1178" y="718" font-size="9" fill="#424242" text-anchor="middle">mp.weixin.qq.com</text>
+  <text x="1178" y="738" font-size="11" font-weight="700" fill="#616161" text-anchor="middle">该 C</text>
+  <text x="1250" y="726" font-size="12" fill="#5a6472">…等 44 条，域名各不相同</text>
+
+  <rect x="748" y="782" width="366" height="196" rx="10" fill="#fff" stroke="#fc8181" stroke-width="1.6"/>
+  <text x="766" y="810" font-size="13.5" font-weight="700" fill="#c53030">若按你的模型（继承源级 B）</text>
+  <text x="766" y="840" font-size="12.5" fill="#9b2c2c">44 条 → 全部 B → 全部进候选池</text>
+  <text x="766" y="868" font-size="12" fill="#9b2c2c">新华社的稿子、营销号的搬运、</text>
+  <text x="766" y="890" font-size="12" fill="#9b2c2c">未收录自媒体的转载，待遇完全一样。</text>
+  <text x="766" y="922" font-size="12" fill="#9b2c2c">需求 §5.3“B 级必须确认出处”落空，</text>
+  <text x="766" y="944" font-size="12" fill="#9b2c2c">待定池形同虚设。</text>
+  <text x="766" y="966" font-size="12.5" font-weight="700" fill="#c53030">→ 这就是必须重算的原因</text>
+
+  <rect x="1134" y="782" width="394" height="196" rx="10" fill="#fff" stroke="#a5d6a7" stroke-width="1.6"/>
+  <text x="1152" y="810" font-size="13.5" font-weight="700" fill="#2e7d32">若按每条出处域名重算</text>
+  <text x="1152" y="840" font-size="12.5" fill="#1b5e20">nasa.gov → A → 候选池</text>
+  <text x="1152" y="866" font-size="12.5" fill="#1b5e20">news.sciencenet.cn → B → 候选池</text>
+  <text x="1152" y="892" font-size="12.5" fill="#616161">未收录域名 → C → 待定池</text>
+  <text x="1152" y="924" font-size="12" fill="#5a6472">同样的 44 条，按出处各归各位；</text>
+  <text x="1152" y="946" font-size="12" fill="#5a6472">营销号自动拦在待定池，等人工判断。</text>
+  <text x="1152" y="968" font-size="12.5" font-weight="700" fill="#2e7d32">→ 代价只是多 12 行代码</text>
+
+  <!-- ================= 底部结论 ================= -->
+  <rect x="48" y="1032" width="1504" height="150" rx="14" fill="#f8fafc" stroke="#dbe3ec" stroke-width="1.5"/>
+  <text x="68" y="1066" font-size="17" font-weight="700" fill="#1a202c">所以争点不是“有没有夹外链”，而是“外链占几条”</text>
+  <text x="68" y="1098" font-size="13" fill="#37474f">· 你的场景（NASA / 新华网 / ScienceDaily）：外链是“例外”，10 条里最多 1 条 → 你说得对，影响很小，一条域名校验就挡住了。</text>
+  <text x="68" y="1124" font-size="13" fill="#37474f">· Google News：外链是“全部”，44 条来自 20 多家媒体 → 不是“有点影响”，而是这个源的本质就是“别人的新闻”。</text>
+  <text x="68" y="1156" font-size="13.5" font-weight="700" fill="#c53030">结论：源级等级照你的想法保留（分组、占位、A 级域名校验都靠它）；但每条新闻的等级要按它自己的出处域名再算一次。</text>
+</svg>

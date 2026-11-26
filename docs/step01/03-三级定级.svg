@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" font-family="Microsoft YaHei, PingFang SC, Segoe UI, sans-serif">
+  <defs>
+    <marker id="ar2" markerWidth="12" markerHeight="9" refX="11" refY="4.5" orient="auto">
+      <path d="M0,0 L12,4.5 L0,9 z" fill="#2e7d32"/>
+    </marker>
+    <marker id="ar2gray" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#b0b8c1"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1000" fill="#ffffff"/>
+
+  <text x="48" y="50" font-size="26" font-weight="700" fill="#1a202c">定级是三层，不是一个“分级桶”</text>
+  <text x="48" y="80" font-size="15" fill="#5a6472">L1 和 L3 是人配置的；L2 是采集时算出来的。把 URL 放进某个等级里，只对纯 RSS 源成立，对聚合源不成立。</text>
+
+  <!-- ===== L1 源级 ===== -->
+  <rect x="48" y="112" width="392" height="620" rx="14" fill="#f8fafc" stroke="#dbe3ec" stroke-width="1.5"/>
+  <text x="68" y="146" font-size="17" font-weight="700" fill="#2d3748">L1　源级：source.level</text>
+  <rect x="66" y="160" width="356" height="26" rx="6" fill="#e8eef6"/>
+  <text x="82" y="178" font-size="12.5" font-weight="700" fill="#2b6cb0">人配置 · 一个源一个等级</text>
+
+  <rect x="66" y="200" width="356" height="118" rx="10" fill="#fff" stroke="#e2e8f0"/>
+  <text x="82" y="226" font-size="14" font-weight="700" fill="#1a202c">gn_particle（Google News 中微子）</text>
+  <text x="82" y="250" font-size="13" fill="#37474f">type = google_news</text>
+  <text x="82" y="274" font-size="13" fill="#37474f">level = <tspan font-weight="700" fill="#2b6cb0">B</tspan></text>
+  <text x="82" y="298" font-size="12.5" fill="#7b8794">query_template = 中微子 OR neutrino …</text>
+
+  <text x="82" y="348" font-size="13.5" font-weight="700" fill="#1a202c">L1 只管三件事：</text>
+  <text x="82" y="374" font-size="13" fill="#37474f">① 该源文章的初始占位值</text>
+  <text x="82" y="398" font-size="13" fill="#37474f">② Dashboard 按源等级分组统计</text>
+  <text x="82" y="422" font-size="13" fill="#37474f">③ A 级源的 expected_domains 校验</text>
+  <text x="82" y="452" font-size="12" fill="#c62828">实测依据：Fermilab 的 feed 里夹带</text>
+  <text x="82" y="470" font-size="12" fill="#c62828">bhpioneer.com 外链，不校验会误升成 A</text>
+
+  <rect x="66" y="500" width="356" height="70" rx="10" fill="#fff5f5" stroke="#fc8181"/>
+  <text x="82" y="524" font-size="13.5" font-weight="700" fill="#c53030">✗ L1 不决定文章级等级</text>
+  <text x="82" y="548" font-size="12" fill="#9b2c2c">源上标 B，不代表这个源的文章都是 B</text>
+
+  <text x="68" y="612" font-size="12.5" fill="#5a6472">例外：纯 RSS 源（NASA / Fermilab /</text>
+  <text x="68" y="632" font-size="12.5" fill="#5a6472">ScienceDaily）的文章域名通常就是</text>
+  <text x="68" y="652" font-size="12.5" fill="#5a6472">源域名，所以“把 URL 放进分级里”在这</text>
+  <text x="68" y="672" font-size="12.5" fill="#5a6472">类源上看起来是成立的 —— 但那是巧合。</text>
+
+  <!-- ===== L3 域名规则 ===== -->
+  <rect x="490" y="112" width="520" height="620" rx="14" fill="#f8fafc" stroke="#dbe3ec" stroke-width="1.5"/>
+  <text x="510" y="146" font-size="17" font-weight="700" fill="#2d3748">L3　域名级：source_domain_rule</text>
+  <rect x="508" y="160" width="484" height="26" rx="6" fill="#e8eef6"/>
+  <text x="524" y="178" font-size="12.5" font-weight="700" fill="#2b6cb0">人配置 · 域名 → 等级 的映射表</text>
+
+  <rect x="508" y="200" width="484" height="46" rx="8" fill="#edf2f7"/>
+  <text x="524" y="228" font-size="13" font-weight="700" fill="#2d3748">域名（eTLD+1，小写，后缀精确匹配）</text>
+  <text x="860" y="228" font-size="13" font-weight="700" fill="#2d3748">等级</text>
+
+  <rect x="508" y="252" width="484" height="40" rx="6" fill="#fff" stroke="#e2e8f0"/>
+  <text x="524" y="278" font-size="13.5" fill="#1a202c">nasa.gov</text>
+  <rect x="858" y="260" width="46" height="24" rx="5" fill="#e8f5e9" stroke="#2e7d32"/>
+  <text x="881" y="277" font-size="13" font-weight="700" fill="#1b5e20" text-anchor="middle">A</text>
+
+  <rect x="508" y="298" width="484" height="40" rx="6" fill="#fff" stroke="#e2e8f0"/>
+  <text x="524" y="324" font-size="13.5" fill="#1a202c">news.sciencenet.cn</text>
+  <text x="700" y="324" font-size="11.5" fill="#7b8794">（实测 GN 命中）</text>
+  <rect x="858" y="306" width="46" height="24" rx="5" fill="#e3f2fd" stroke="#1e88e5"/>
+  <text x="881" y="323" font-size="13" font-weight="700" fill="#0d47a1" text-anchor="middle">B</text>
+
+  <rect x="508" y="344" width="484" height="40" rx="6" fill="#fff" stroke="#e2e8f0"/>
+  <text x="524" y="370" font-size="13.5" fill="#1a202c">weibo.com / douban.com</text>
+  <rect x="858" y="352" width="46" height="24" rx="5" fill="#f5f5f5" stroke="#9e9e9e"/>
+  <text x="881" y="369" font-size="13" font-weight="700" fill="#616161" text-anchor="middle">C</text>
+
+  <rect x="508" y="390" width="484" height="40" rx="6" fill="#fffaf0" stroke="#f6ad55" stroke-dasharray="5 3"/>
+  <text x="524" y="416" font-size="13.5" fill="#1a202c">未收录的域名</text>
+  <text x="700" y="416" font-size="11.5" fill="#c05621">← 靠“未收录域名报表”发现</text>
+  <rect x="858" y="398" width="46" height="24" rx="5" fill="#f5f5f5" stroke="#9e9e9e"/>
+  <text x="881" y="415" font-size="13" font-weight="700" fill="#616161" text-anchor="middle">C</text>
+
+  <rect x="508" y="452" width="484" height="132" rx="10" fill="#fff" stroke="#e2e8f0"/>
+  <text x="524" y="476" font-size="13.5" font-weight="700" fill="#1a202c">判定优先级（自上而下，命中即停）</text>
+  <text x="524" y="500" font-size="12.5" fill="#37474f">1. 出处域名拿不到 → C</text>
+  <text x="524" y="522" font-size="12.5" fill="#37474f">2. 命中 blocklist → C　3. 命中 A 白名单 → A</text>
+  <text x="524" y="544" font-size="12.5" fill="#37474f">4. 命中 B 白名单 → B</text>
+  <text x="524" y="566" font-size="12.5" fill="#37474f">5. rss + 源 A + 域名在 expected_domains → A</text>
+
+  <rect x="508" y="600" width="484" height="106" rx="10" fill="#fff5f5" stroke="#fc8181"/>
+  <text x="524" y="624" font-size="13.5" font-weight="700" fill="#c53030">当前 P0 冲突：规则 1 会把 GN 全判 C</text>
+  <text x="524" y="648" font-size="12" fill="#9b2c2c">GN 不回溯 → resolved_url 恒为 null → 命中规则 1</text>
+  <text x="524" y="668" font-size="12" fill="#9b2c2c">修法：引入“出处域名”= resolved_url 优先，</text>
+  <text x="524" y="688" font-size="12" fill="#9b2c2c">为空时取 publisher_url（即 item 内 source url）</text>
+
+  <!-- ===== L2 文章级 ===== -->
+  <rect x="1070" y="112" width="482" height="620" rx="14" fill="#f8fafc" stroke="#dbe3ec" stroke-width="1.5"/>
+  <text x="1090" y="146" font-size="17" font-weight="700" fill="#2d3748">L2　文章级：article.source_level</text>
+  <rect x="1088" y="160" width="446" height="26" rx="6" fill="#e6fffa"/>
+  <text x="1104" y="178" font-size="12.5" font-weight="700" fill="#234e52">采集时算出来 · 每条新闻一个等级</text>
+
+  <text x="1104" y="212" font-size="12.5" fill="#5a6472">源：gn_particle　采回 3 条，等级各不相同</text>
+
+  <rect x="1088" y="226" width="446" height="98" rx="10" fill="#fff" stroke="#e2e8f0"/>
+  <text x="1104" y="250" font-size="13" fill="#1a202c">江门中微子实验发布首个物理成果</text>
+  <text x="1104" y="272" font-size="11.5" fill="#7b8794">出处域名：nasa.gov / cas.cn</text>
+  <rect x="1388" y="240" width="46" height="24" rx="5" fill="#e8f5e9" stroke="#2e7d32"/>
+  <text x="1411" y="257" font-size="13" font-weight="700" fill="#1b5e20" text-anchor="middle">A</text>
+  <text x="1448" y="257" font-size="12" fill="#2e7d32">→ 候选池</text>
+  <text x="1104" y="300" font-size="11" fill="#7b8794">reason = rule3:nasa.gov</text>
+
+  <rect x="1088" y="334" width="446" height="98" rx="10" fill="#fff" stroke="#e2e8f0"/>
+  <text x="1104" y="358" font-size="13" fill="#1a202c">中微子研究进展综述</text>
+  <text x="1104" y="380" font-size="11.5" fill="#7b8794">出处域名：news.sciencenet.cn</text>
+  <rect x="1388" y="348" width="46" height="24" rx="5" fill="#e3f2fd" stroke="#1e88e5"/>
+  <text x="1411" y="365" font-size="13" font-weight="700" fill="#0d47a1" text-anchor="middle">B</text>
+  <text x="1448" y="365" font-size="12" fill="#1565c0">→ 候选池</text>
+  <text x="1104" y="408" font-size="11" fill="#7b8794">reason = rule4:sciencenet.cn</text>
+
+  <rect x="1088" y="442" width="446" height="98" rx="10" fill="#fff" stroke="#e2e8f0"/>
+  <text x="1104" y="466" font-size="13" fill="#1a202c">某公众号转载：中微子那些事儿</text>
+  <text x="1104" y="488" font-size="11.5" fill="#7b8794">出处域名：未收录</text>
+  <rect x="1388" y="456" width="46" height="24" rx="5" fill="#f5f5f5" stroke="#9e9e9e"/>
+  <text x="1411" y="473" font-size="13" font-weight="700" fill="#616161" text-anchor="middle">C</text>
+  <text x="1448" y="473" font-size="12" fill="#616161">→ 待定池</text>
+  <text x="1104" y="516" font-size="11" fill="#7b8794">reason = rule1:no-origin</text>
+
+  <rect x="1088" y="556" width="446" height="150" rx="10" fill="#e6fffa" stroke="#4fd1c5"/>
+  <text x="1104" y="580" font-size="13.5" font-weight="700" fill="#234e52">为什么要文章级</text>
+  <text x="1104" y="604" font-size="12" fill="#285e61">同一条 B 级命中，可能是新华社（该 A），</text>
+  <text x="1104" y="624" font-size="12" fill="#285e61">也可能是营销号搬运（该 C）。</text>
+  <text x="1104" y="648" font-size="12" fill="#285e61">源级一旦定死，这两种情况就无法区分，</text>
+  <text x="1104" y="668" font-size="12" fill="#285e61">需求 §5.3“B 级必须确认出处”会落空。</text>
+  <text x="1104" y="692" font-size="12" font-weight="700" fill="#234e52">→ 决定进候选池还是待定池</text>
+
+  <!-- ===== 箭头：L3 → L2 ===== -->
+  <path d="M1000,400 C1035,400 1035,300 1066,300" fill="none" stroke="#2e7d32" stroke-width="2.4" marker-end="url(#ar2)"/>
+  <text x="1010" y="352" font-size="12.5" font-weight="700" fill="#2e7d32" text-anchor="middle">按域名</text>
+  <text x="1010" y="370" font-size="12.5" font-weight="700" fill="#2e7d32" text-anchor="middle">查表</text>
+
+  <!-- 箭头：L1 ⇢ L2 不继承（断头箭头 + 红叉，不进入 L2 面板） -->
+  <path d="M418,240 L464,240" fill="none" stroke="#b0b8c1" stroke-width="1.8" stroke-dasharray="6 4"/>
+  <path d="M468,228 L486,246 M486,228 L468,246" stroke="#c53030" stroke-width="3" stroke-linecap="round"/>
+  <text x="460" y="272" font-size="11.5" font-weight="700" fill="#c53030" text-anchor="middle">不继承</text>
+
+  <!-- ===== 底部结论 ===== -->
+  <rect x="48" y="762" width="1504" height="196" rx="14" fill="#f8fafc" stroke="#dbe3ec" stroke-width="1.5"/>
+  <text x="68" y="794" font-size="17" font-weight="700" fill="#2d3748">一句话记住这三层的关系</text>
+  <text x="68" y="828" font-size="15" font-weight="700" fill="#1a202c">源级回答“这个口子可信度如何”，域名级回答“什么域名算几级”，文章级回答“这条到底是谁发的”。</text>
+
+  <text x="68" y="862" font-size="13" fill="#37474f">· 配 L1：给源打等级，同时决定它是否需要 expected_domains（A 级必填）。</text>
+  <text x="68" y="886" font-size="13" fill="#37474f">· 配 L3：维护域名白名单 / 黑名单 —— 这是唯一持续需要人运营的表。</text>
+  <text x="68" y="910" font-size="13" fill="#37474f">· 看 L2：审核台每条新闻显示等级 + reason（如 rule3:nasa.gov），让审核员一眼知道为什么。</text>
+
+  <rect x="68" y="926" width="1464" height="18" rx="4" fill="#fff5f5"/>
+  <text x="68" y="940" font-size="12.5" fill="#c53030">照“把 URL 放进分级桶”的直觉去实现，GN 的 6 个源会全部落在 C 级，B 级主路径直接断掉。</text>
+</svg>

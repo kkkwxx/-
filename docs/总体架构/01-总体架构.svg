@@ -1,0 +1,251 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1395" width="1600" height="1395" role="img" aria-label="神秘新闻 MVP 总体架构图">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748B"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0F172A" flood-opacity="0.08"/>
+    </filter>
+    <style>
+      .bg { fill: #F8FAFC; }
+      .title { font-family: 'Microsoft YaHei','PingFang SC','Noto Sans CJK SC',sans-serif; font-size: 30px; font-weight: 700; fill: #0F172A; }
+      .subtitle { font-family: 'Microsoft YaHei','PingFang SC','Noto Sans CJK SC',sans-serif; font-size: 15px; fill: #475569; }
+      .layer-label { font-family: 'Microsoft YaHei','PingFang SC','Noto Sans CJK SC',sans-serif; font-size: 16px; font-weight: 700; fill: #334155; }
+      .box { fill: #FFFFFF; stroke-width: 1.5; filter: url(#shadow); }
+      .box-title { font-family: 'Microsoft YaHei','PingFang SC','Noto Sans CJK SC',sans-serif; font-size: 14px; font-weight: 600; fill: #0F172A; }
+      .box-title-sm { font-family: 'Microsoft YaHei','PingFang SC','Noto Sans CJK SC',sans-serif; font-size: 11.5px; font-weight: 600; fill: #0F172A; }
+      .box-sub { font-family: 'Microsoft YaHei','PingFang SC','Noto Sans CJK SC',sans-serif; font-size: 11.5px; fill: #64748B; }
+      .note { font-family: 'Microsoft YaHei','PingFang SC','Noto Sans CJK SC',sans-serif; font-size: 12px; fill: #64748B; }
+      .small-arrow { font-family: 'Microsoft YaHei','PingFang SC','Noto Sans CJK SC',sans-serif; font-size: 15px; fill: #94A3B8; }
+      .arrow { stroke: #64748B; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+      .dashed { stroke-dasharray: 6 6; }
+      .band { stroke-width: 1.2; }
+      .band-access { fill: #EAF2FF; stroke: #BFD7FE; }
+      .band-process { fill: #EAF7F0; stroke: #BBE7CC; }
+      .band-ai { fill: #FFF4E5; stroke: #FED7AA; }
+      .band-review { fill: #F3E8FF; stroke: #D8B4FE; }
+      .band-publish { fill: #E0F7FA; stroke: #A5F3FC; }
+      .band-display { fill: #FCE7F3; stroke: #F9A8D4; }
+      .band-base { fill: #F1F5F9; stroke: #CBD5E1; }
+      .box-access { stroke: #93C5FD; }
+      .box-process { stroke: #86EFAC; }
+      .box-ai { stroke: #FDBA74; }
+      .box-review { stroke: #C084FC; }
+      .box-publish { stroke: #67E8F9; }
+      .box-display { stroke: #F472B6; }
+      .box-base { stroke: #CBD5E1; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1600" height="1395"/>
+  <text class="title" x="40" y="52">神秘新闻 MVP 总体架构</text>
+  <text class="subtitle" x="40" y="82">采集 → 处理 → AI 加工 → 人工审核 → 发布 → 栏目展示</text>
+  <text class="note" x="1560" y="52" text-anchor="end">v0.1 · 2026-11-25</text>
+  <text class="note" x="1560" y="82" text-anchor="end">主流程自上而下；右侧为外部模型与范围边界</text>
+
+  <!-- 外部信源 -->
+  <rect class="box box-access" x="40" y="205" width="240" height="110" rx="14"/>
+  <text class="box-title" x="160" y="232" text-anchor="middle">外部信源</text>
+  <text class="box-sub" x="160" y="256" text-anchor="middle">RSS / Google News</text>
+  <text class="box-sub" x="160" y="276" text-anchor="middle">聚合 API / 新闻源</text>
+  <text class="box-sub" x="160" y="296" text-anchor="middle">ATel / NASA / phys.org</text>
+  <path class="arrow" d="M280 260 L315 260"/>
+
+  <!-- 接入层 -->
+  <rect class="band band-access" x="320" y="165" width="960" height="235" rx="16"/>
+  <text class="layer-label" x="340" y="190">接入层</text>
+
+  <rect class="box box-access" x="340" y="205" width="210" height="75" rx="12"/>
+  <text class="box-title" x="445" y="232" text-anchor="middle">信源管理</text>
+  <text class="box-sub" x="445" y="254" text-anchor="middle">source_level</text>
+  <text class="box-sub" x="445" y="270" text-anchor="middle">poll_interval / enabled</text>
+  <text class="small-arrow" x="557" y="249" text-anchor="middle">→</text>
+
+  <rect class="box box-access" x="565" y="205" width="210" height="75" rx="12"/>
+  <text class="box-title" x="670" y="232" text-anchor="middle">采集任务</text>
+  <text class="box-sub" x="670" y="254" text-anchor="middle">RSS / Google News / API</text>
+  <text class="box-sub" x="670" y="270" text-anchor="middle">失败重试 / 限速</text>
+  <text class="small-arrow" x="782" y="249" text-anchor="middle">→</text>
+
+  <rect class="box box-access" x="790" y="205" width="210" height="75" rx="12"/>
+  <text class="box-title" x="895" y="232" text-anchor="middle">原始新闻落地</text>
+  <text class="box-sub" x="895" y="254" text-anchor="middle">raw_item / 原始快照</text>
+  <text class="box-sub" x="895" y="270" text-anchor="middle">content_hash / fetched_at</text>
+
+  <!-- 手工导入：与采集任务并列的第二条入口，产出 raw_item 汇入落地 -->
+  <rect class="box box-access" x="596" y="318" width="140" height="32" rx="16"/>
+  <text class="box-sub" x="666" y="339" text-anchor="middle">运维输入</text>
+  <text class="small-arrow" x="762" y="340" text-anchor="middle">→</text>
+
+  <rect class="box box-access" x="790" y="310" width="240" height="75" rx="12"/>
+  <text class="box-title" x="910" y="337" text-anchor="middle">手工导入 / URL 导入</text>
+  <text class="box-sub" x="910" y="359" text-anchor="middle">运维手工输入 · 非抓取</text>
+  <text class="box-sub" x="910" y="375" text-anchor="middle">raw_item · C 级线索 · 单条重跑</text>
+
+  <path class="arrow" d="M910 308 L910 284"/>
+  <path class="arrow dashed" d="M445 281 L445 372 L786 372"/>
+  <text class="note" x="470" y="364">提供 type=manual 源配置</text>
+
+  <g transform="translate(0,95)">
+  <!-- 处理层 -->
+  <rect class="band band-process" x="320" y="320" width="960" height="195" rx="16"/>
+  <text class="layer-label" x="340" y="345">处理层 · 两级去重</text>
+
+  <rect class="box box-process" x="340" y="360" width="285" height="65" rx="12"/>
+  <text class="box-title" x="482" y="386" text-anchor="middle">标准化 / 链接回溯 / 来源重分级</text>
+  <text class="box-sub" x="482" y="407" text-anchor="middle">original_url / canonical_url</text>
+  <text class="small-arrow" x="632" y="393" text-anchor="middle">→</text>
+
+  <rect class="box box-process" x="640" y="360" width="285" height="65" rx="12"/>
+  <text class="box-title" x="782" y="386" text-anchor="middle">规则过滤</text>
+  <text class="box-sub" x="782" y="407" text-anchor="middle">教程 / 广告 / 星座 / 影视科幻</text>
+  <text class="small-arrow" x="932" y="393" text-anchor="middle">→</text>
+
+  <rect class="box box-process" x="940" y="360" width="300" height="65" rx="12"/>
+  <text class="box-title" x="1090" y="386" text-anchor="middle">即时去重</text>
+  <text class="box-sub" x="1090" y="407" text-anchor="middle">URL / 标题指纹 / content_hash</text>
+
+  <rect class="box box-process" x="340" y="440" width="285" height="65" rx="12"/>
+  <text class="box-title" x="482" y="466" text-anchor="middle">is_event / 五类判定</text>
+  <text class="box-sub" x="482" y="487" text-anchor="middle">五类 + other / confidence</text>
+  <text class="small-arrow" x="632" y="473" text-anchor="middle">→</text>
+
+  <rect class="box box-process" x="640" y="440" width="285" height="65" rx="12"/>
+  <text class="box-title" x="782" y="466" text-anchor="middle">事件级去重</text>
+  <text class="box-sub" x="782" y="487" text-anchor="middle">实体 + 动作 + 时间 → event_cluster</text>
+  <text class="small-arrow" x="932" y="473" text-anchor="middle">→</text>
+
+  <rect class="box box-process" x="940" y="440" width="300" height="65" rx="12"/>
+  <text class="box-title" x="1090" y="466" text-anchor="middle">时效门禁</text>
+  <text class="box-sub" x="1090" y="487" text-anchor="middle">publish_time / event_time / 时区</text>
+
+  <!-- AI 加工层 -->
+  <rect class="band band-ai" x="320" y="535" width="960" height="150" rx="16"/>
+  <text class="layer-label" x="340" y="560">AI 加工层 · 百炼</text>
+
+  <rect class="box box-ai" x="340" y="575" width="285" height="90" rx="12"/>
+  <text class="box-title" x="482" y="605" text-anchor="middle">事实锚点</text>
+  <text class="box-sub" x="482" y="628" text-anchor="middle">原文关键句 + 来源链接</text>
+  <text class="box-sub" x="482" y="646" text-anchor="middle">先抽取，后生成</text>
+  <text class="small-arrow" x="632" y="621" text-anchor="middle">→</text>
+
+  <rect class="box box-ai" x="640" y="575" width="285" height="90" rx="12"/>
+  <text class="box-title" x="782" y="605" text-anchor="middle">标题候选 / 导语 / 摘要</text>
+  <text class="box-sub" x="782" y="628" text-anchor="middle">3—5 个候选 + hook_score</text>
+  <text class="box-sub" x="782" y="646" text-anchor="middle">body_lead / body_summary</text>
+  <text class="small-arrow" x="932" y="621" text-anchor="middle">→</text>
+
+  <rect class="box box-ai" x="940" y="575" width="300" height="90" rx="12"/>
+  <text class="box-title" x="1090" y="605" text-anchor="middle">轻校验 / 风险标记 / 评分</text>
+  <text class="box-sub" x="1090" y="628" text-anchor="middle">字数 / 禁用词 / 标题正文一致</text>
+  <text class="box-sub" x="1090" y="646" text-anchor="middle">risk_flags / need_review</text>
+
+  <rect class="box box-ai" x="1320" y="560" width="240" height="100" rx="14"/>
+  <text class="box-title" x="1440" y="586" text-anchor="middle">百炼 LLM</text>
+  <text class="box-sub" x="1440" y="610" text-anchor="middle">qwen3.8-flash（分类/抽取）</text>
+  <text class="box-sub" x="1440" y="630" text-anchor="middle">qwen-plus（标题/正文）</text>
+  <text class="box-sub" x="1440" y="650" text-anchor="middle">enable_thinking:false</text>
+  <path class="arrow dashed" d="M1320 610 L1285 610"/>
+
+  <!-- 审核层 -->
+  <rect class="band band-review" x="320" y="710" width="960" height="145" rx="16"/>
+  <text class="layer-label" x="340" y="735">审核层 · 全人工审核 / admin</text>
+
+  <rect class="box box-review" x="340" y="750" width="380" height="90" rx="12"/>
+  <text class="box-title" x="530" y="780" text-anchor="middle">人工审核工作台</text>
+  <text class="box-sub" x="530" y="803" text-anchor="middle">常规 / 待定 / 已通过 / 已拒绝</text>
+  <text class="box-sub" x="530" y="821" text-anchor="middle">原文对照 + 编辑重校验</text>
+
+  <rect class="box box-review" x="735" y="750" width="240" height="90" rx="12"/>
+  <text class="box-title" x="855" y="780" text-anchor="middle">发布 checklist</text>
+  <text class="box-sub" x="855" y="803" text-anchor="middle">来源 / 事件 / 五类</text>
+  <text class="box-sub" x="855" y="821" text-anchor="middle">时效 / 去重 / 一致性</text>
+
+  <rect class="box box-review" x="990" y="750" width="250" height="90" rx="12"/>
+  <text class="box-title" x="1115" y="780" text-anchor="middle">审核日志</text>
+  <text class="box-sub" x="1115" y="803" text-anchor="middle">review_action</text>
+  <text class="box-sub" x="1115" y="821" text-anchor="middle">操作人 / 时间 / 前后值</text>
+
+  <rect class="box box-review" x="1320" y="750" width="240" height="90" rx="14"/>
+  <text class="box-title" x="1440" y="780" text-anchor="middle">已拒绝 / 记录原因</text>
+  <text class="box-sub" x="1440" y="804" text-anchor="middle">reject_reason / 操作人</text>
+  <text class="box-sub" x="1440" y="824" text-anchor="middle">不进入栏目</text>
+  <path class="arrow" d="M1280 795 L1315 795"/>
+
+  <!-- 发布层 -->
+  <rect class="band band-publish" x="320" y="885" width="960" height="135" rx="16"/>
+  <text class="layer-label" x="340" y="910">发布层 · 内部发布</text>
+
+  <rect class="box box-publish" x="340" y="925" width="285" height="70" rx="12"/>
+  <text class="box-title" x="482" y="952" text-anchor="middle">内部发布服务</text>
+  <text class="box-sub" x="482" y="974" text-anchor="middle">立即发布 / 可选下架</text>
+  <text class="small-arrow" x="632" y="960" text-anchor="middle">→</text>
+
+  <rect class="box box-publish" x="640" y="925" width="285" height="70" rx="12"/>
+  <text class="box-title" x="782" y="952" text-anchor="middle">published_article 快照</text>
+  <text class="box-sub" x="782" y="974" text-anchor="middle">标题/导语/摘要/来源/免责声明</text>
+  <text class="small-arrow" x="932" y="960" text-anchor="middle">→</text>
+
+  <rect class="box box-publish" x="940" y="925" width="300" height="70" rx="12"/>
+  <text class="box-title" x="1090" y="952" text-anchor="middle">push_record 发布记录</text>
+  <text class="box-sub" x="1090" y="974" text-anchor="middle">状态 / 操作人 / 发布时间</text>
+
+  <rect class="box box-base" x="1320" y="885" width="240" height="180" rx="14"/>
+  <text class="box-title" x="1440" y="915" text-anchor="middle">MVP 边界</text>
+  <text class="box-sub" x="1340" y="945">• 不做真实 App 推送</text>
+  <text class="box-sub" x="1340" y="967">• 全人工审核，不自动发布</text>
+  <text class="box-sub" x="1340" y="989">• 不做多角色 RBAC</text>
+  <text class="box-sub" x="1340" y="1011">• 不做定时发布</text>
+  <text class="box-sub" x="1340" y="1033">• 初期不做向量去重</text>
+
+  <!-- 展示层 -->
+  <rect class="band band-display" x="320" y="1040" width="960" height="120" rx="16"/>
+  <text class="layer-label" x="340" y="1065">展示层 · 用户 /column</text>
+
+  <rect class="box box-display" x="340" y="1080" width="430" height="60" rx="12"/>
+  <text class="box-title" x="555" y="1105" text-anchor="middle">栏目列表</text>
+  <text class="box-sub" x="555" y="1125" text-anchor="middle">分类 / 标题 / 导语 / 来源 / 时间</text>
+
+  <rect class="box box-display" x="790" y="1080" width="450" height="60" rx="12"/>
+  <text class="box-title" x="1015" y="1105" text-anchor="middle">栏目详情</text>
+  <text class="box-sub" x="1015" y="1125" text-anchor="middle">标题 → 导语 → 摘要 → 来源 → 免责声明</text>
+
+  <text class="note" x="340" y="1150">公开页面，无需登录；灵异/灵能内容显示内容性质与免责声明。</text>
+
+  <!-- 数据与运行底座 -->
+  <rect class="band band-base" x="320" y="1180" width="960" height="100" rx="16"/>
+  <text class="layer-label" x="340" y="1205">数据与运行底座（所有层共享）</text>
+
+  <rect class="box box-base" x="340" y="1220" width="160" height="45" rx="10"/>
+  <text class="box-title-sm" x="420" y="1248" text-anchor="middle">PostgreSQL</text>
+
+  <rect class="box box-base" x="515" y="1220" width="190" height="45" rx="10"/>
+  <text class="box-title-sm" x="610" y="1248" text-anchor="middle">APScheduler + task_run</text>
+
+  <rect class="box box-base" x="720" y="1220" width="140" height="45" rx="10"/>
+  <text class="box-title-sm" x="790" y="1248" text-anchor="middle">配置中心</text>
+
+  <rect class="box box-base" x="875" y="1220" width="160" height="45" rx="10"/>
+  <text class="box-title-sm" x="955" y="1248" text-anchor="middle">Dashboard / 监控</text>
+
+  <rect class="box box-base" x="1050" y="1220" width="220" height="45" rx="10"/>
+  <text class="box-title-sm" x="1160" y="1248" text-anchor="middle">审计 ai_run / review_action</text>
+
+  <!-- 图例 -->
+  <text class="layer-label" x="40" y="1050">图例</text>
+  <line class="arrow" x1="40" y1="1075" x2="80" y2="1075"/>
+  <text class="note" x="92" y="1080">主流程</text>
+  <line class="arrow dashed" x1="40" y1="1105" x2="80" y2="1105"/>
+  <text class="note" x="92" y="1110">外部调用 / 分支</text>
+  <text class="note" x="40" y="1150">底座：PostgreSQL / 调度 / 配置 / 监控 / 审计</text>
+  <text class="note" x="40" y="1175">所有层共享，不单独属于某一模块。</text>
+  <text class="note" x="40" y="1210">发布 = 内部发布到栏目，不接真实 App API。</text>
+
+  <!-- 主流程箭头 -->
+  <path class="arrow" d="M800 305 L800 318"/>
+  <path class="arrow" d="M800 515 L800 533"/>
+  <path class="arrow" d="M800 685 L800 708"/>
+  <path class="arrow" d="M800 855 L800 883"/>
+  <path class="arrow" d="M800 1020 L800 1038"/>
+  </g>
+</svg>

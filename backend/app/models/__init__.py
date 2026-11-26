@@ -1,0 +1,20 @@
+"""模型统一出口。Alembic autogenerate 依赖这里 import 全部表。"""
+
+from __future__ import annotations
+
+from app.core.db import Base
+from app.models.audit import ReviewAction
+from app.models.pipeline import Article, RawItem
+from app.models.source import Source, SourceDomainRule, UnknownDomain
+from app.models.task import TaskRun
+
+__all__ = [
+    "Base",
+    "Article",
+    "RawItem",
+    "ReviewAction",
+    "Source",
+    "SourceDomainRule",
+    "TaskRun",
+    "UnknownDomain",
+]

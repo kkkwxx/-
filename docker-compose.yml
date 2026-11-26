@@ -1,0 +1,27 @@
+# 显式项目名：仓库目录含中文时 compose 无法推导默认项目名（实测报 "project name must not be empty"）
+name: mystery-news
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: mystery-news-db
+    environment:
+      POSTGRES_USER: mystery
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: mystery_news
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      # 宿主 5433，避免和本机已有 PostgreSQL 冲突（技术栈 §7）
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mystery -d mystery_news"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  pgdata:

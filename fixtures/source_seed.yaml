@@ -1,0 +1,291 @@
+# 20 条信源种子（03-信源管理 §5.1 清单总表）
+# 落库口径：app.seed 按 code upsert，已存在的源只补缺失字段，不覆盖人改过的配置（03 §10.2）
+# expected_status_on_first_run 只用于 `python -m app.seed --verify` 对账，不参与运行逻辑。
+# Google News 源的 url 是 §5.3 基础模板拼好的完整地址，query_template 存未编码的 QUERY 原文。
+
+# ---------------- S1 正常源（A 级 rss）----------------
+- code: nasa_breaking
+  name: NASA Breaking News
+  type: rss
+  level: A
+  url: https://www.nasa.gov/news-release/feed/
+  query_template: null
+  poll_interval_min: 30
+  enabled: true
+  expected_domains: [nasa.gov]
+  title_suffix_rules: ["- NASA", "| NASA"]
+  api_key_env: null
+  note: 需求点名源；实测 200 / 10 条
+  expected_status_on_first_run: ok
+
+- code: esa_news
+  name: ESA News
+  type: rss
+  level: A
+  url: https://www.esa.int/ESA/Feeds/News
+  query_template: null
+  poll_interval_min: 30
+  enabled: false
+  expected_domains: [esa.int]
+  title_suffix_rules: [" - ESA", " | ESA"]
+  api_key_env: null
+  note: 需求点名源；连接被中断，备用地址也超时。保留配置待换机复测
+  expected_status_on_first_run: down
+
+- code: fnal_news
+  name: Fermilab Newsroom
+  type: rss
+  level: A
+  url: https://news.fnal.gov/feed/
+  query_template: null
+  poll_interval_min: 30
+  enabled: true
+  expected_domains: [fnal.gov]
+  title_suffix_rules: [" - Fermilab"]
+  api_key_env: null
+  note: 需求点名源；实测 200 / 10 条；10 条里有 1 条外链 bhpioneer.com
+  expected_status_on_first_run: ok
+
+- code: phys_space
+  name: phys.org Space
+  type: rss
+  level: A
+  url: https://phys.org/rss-feed/space-news/
+  query_template: null
+  poll_interval_min: 30
+  enabled: true
+  expected_domains: [phys.org]
+  title_suffix_rules: [" - phys.org"]
+  api_key_env: null
+  note: 实测 200 / 30 条；文章页 403，正文走摘要回退
+  expected_status_on_first_run: ok
+
+- code: phys_neuro
+  name: phys.org Neuroscience
+  type: rss
+  level: A
+  url: https://phys.org/rss-feed/science-news/neuroscience/
+  query_template: null
+  poll_interval_min: 30
+  enabled: true
+  expected_domains: [phys.org]
+  title_suffix_rules: [" - phys.org"]
+  api_key_env: null
+  note: 原地址 404，已换新地址；200 / 30 条
+  expected_status_on_first_run: ok
+
+- code: sd_bci
+  name: ScienceDaily Brain & Behavior
+  type: rss
+  level: A
+  url: https://www.sciencedaily.com/rss/mind_brain.xml
+  query_template: null
+  poll_interval_min: 30
+  enabled: true
+  expected_domains: [sciencedaily.com]
+  title_suffix_rules: [" | ScienceDaily"]
+  api_key_env: null
+  note: 需求点名源；子类 feed 已删除，退到分类级；200 / 60 条
+  expected_status_on_first_run: ok
+
+- code: sd_astronomy
+  name: ScienceDaily Astronomy
+  type: rss
+  level: A
+  url: https://www.sciencedaily.com/rss/space_time/astronomy.xml
+  query_template: null
+  poll_interval_min: 30
+  enabled: true
+  expected_domains: [sciencedaily.com]
+  title_suffix_rules: [" | ScienceDaily"]
+  api_key_env: null
+  note: 实测 200 / 60 条
+  expected_status_on_first_run: ok
+
+- code: sd_space
+  name: ScienceDaily Space & Time
+  type: rss
+  level: A
+  url: https://www.sciencedaily.com/rss/space_time.xml
+  query_template: null
+  poll_interval_min: 30
+  enabled: true
+  expected_domains: [sciencedaily.com]
+  title_suffix_rules: [" | ScienceDaily"]
+  api_key_env: null
+  note: 实测 200 / 60 条
+  expected_status_on_first_run: ok
+
+# ---------------- S6 内容跑偏（B 级 rss）----------------
+- code: watchers_neo
+  name: The Watchers
+  type: rss
+  level: B
+  url: https://watchers.news/feed/
+  query_template: null
+  poll_interval_min: 30
+  enabled: true
+  expected_domains: [watchers.news]
+  title_suffix_rules: [" - The Watchers"]
+  api_key_env: null
+  note: 需求点名源；200 / 10 条，但内容是全球地震火山，与近地天体无关（S6 样本）
+  expected_status_on_first_run: ok
+
+# ---------------- Google News 六条 query（§5.3）----------------
+- code: gn_particle
+  name: GN 中微子/暗物质
+  type: google_news
+  level: B
+  url: https://news.google.com/rss/search?q=%28%E4%B8%AD%E5%BE%AE%E5%AD%90%20OR%20%E6%B1%9F%E9%97%A8%E4%B8%AD%E5%BE%AE%E5%AD%90%20OR%20%E5%B9%BD%E7%81%B5%E7%B2%92%E5%AD%90%20OR%20%E6%9A%97%E7%89%A9%E8%B4%A8%20OR%20%E5%BC%95%E5%8A%9B%E6%B3%A2%29%20when%3A2d&hl=zh-CN&gl=CN&ceid=CN:zh-Hans
+  query_template: (中微子 OR 江门中微子 OR 幽灵粒子 OR 暗物质 OR 引力波) when:2d
+  poll_interval_min: 60
+  enabled: true
+  expected_domains: []
+  title_suffix_rules: []
+  api_key_env: null
+  note: 实测 44 条（Q1 原为 12 条，随关键词调整变化）
+  expected_status_on_first_run: ok
+
+- code: gn_asteroid
+  name: GN 小行星/飞掠
+  type: google_news
+  level: B
+  url: https://news.google.com/rss/search?q=%28%E5%B0%8F%E8%A1%8C%E6%98%9F%20OR%20%E8%BF%91%E5%9C%B0%E5%A4%A9%E4%BD%93%20OR%20%E9%A3%9E%E6%8E%A0%20OR%20%22%E6%BD%9C%E5%9C%A8%E5%A8%81%E8%83%81%22%29%20when%3A2d%20-%E6%98%9F%E5%BA%A7&hl=zh-CN&gl=CN&ceid=CN:zh-Hans
+  query_template: (小行星 OR 近地天体 OR 飞掠 OR "潜在威胁") when:2d -星座
+  poll_interval_min: 60
+  enabled: true
+  expected_domains: []
+  title_suffix_rules: []
+  api_key_env: null
+  note: 实测 16 条
+  expected_status_on_first_run: ok
+
+- code: gn_exoplanet
+  name: GN 类地/系外行星
+  type: google_news
+  level: B
+  url: https://news.google.com/rss/search?q=%28%E7%B1%BB%E5%9C%B0%E8%A1%8C%E6%98%9F%20OR%20%E7%B3%BB%E5%A4%96%E8%A1%8C%E6%98%9F%20OR%20%E5%AE%9C%E5%B1%85%E5%B8%A6%20OR%20%22%E5%9C%B0%E7%90%832.0%22%29%20when%3A2d&hl=zh-CN&gl=CN&ceid=CN:zh-Hans
+  query_template: (类地行星 OR 系外行星 OR 宜居带 OR "地球2.0") when:2d
+  poll_interval_min: 60
+  enabled: true
+  expected_domains: []
+  title_suffix_rules: []
+  api_key_env: null
+  note: 实测 5 条，量偏少
+  expected_status_on_first_run: ok
+
+- code: gn_bci
+  name: GN 脑机/意念
+  type: google_news
+  level: B
+  url: https://news.google.com/rss/search?q=%28%E8%84%91%E6%9C%BA%E6%8E%A5%E5%8F%A3%20OR%20%E6%84%8F%E5%BF%B5%E6%8E%A7%E5%88%B6%20OR%20%E8%84%91%E7%94%B5%20OR%20%E8%84%91%E6%8E%A7%29%20when%3A2d%20-%E9%A2%84%E5%94%AE%20-%E5%B9%BF%E5%91%8A&hl=zh-CN&gl=CN&ceid=CN:zh-Hans
+  query_template: (脑机接口 OR 意念控制 OR 脑电 OR 脑控) when:2d -预售 -广告
+  poll_interval_min: 60
+  enabled: true
+  expected_domains: []
+  title_suffix_rules: []
+  api_key_env: null
+  note: 实测 65 条，量大噪声中等
+  expected_status_on_first_run: ok
+
+- code: gn_paranormal
+  name: GN 灵异/通灵/道士
+  type: google_news
+  level: B
+  url: https://news.google.com/rss/search?q=%28%E7%81%B5%E5%BC%82%20OR%20%E9%80%9A%E7%81%B5%20OR%20%E9%81%93%E5%A3%AB%20OR%20%E6%9C%AF%E6%95%B0%20OR%20%E8%B6%85%E8%87%AA%E7%84%B6%29%20when%3A2d%20-%E5%B0%8F%E8%AF%B4%20-%E7%94%B5%E5%BD%B1%20-%E8%82%A1%E4%BB%BD%20-%E8%AF%81%E5%88%B8&hl=zh-CN&gl=CN&ceid=CN:zh-Hans
+  query_template: (灵异 OR 通灵 OR 道士 OR 术数 OR 超自然) when:2d -小说 -电影 -股份 -证券
+  poll_interval_min: 60
+  enabled: true
+  expected_domains: []
+  title_suffix_rules: []
+  api_key_env: null
+  note: S6 样本：通灵命中上市公司、超自然命中游戏（基本失效，见 03 §5.4）
+  expected_status_on_first_run: ok
+
+- code: gn_ufo
+  name: GN UFO/UAP
+  type: google_news
+  level: B
+  url: https://news.google.com/rss/search?q=%28UFO%20OR%20UAP%20OR%20%22%E4%B8%8D%E6%98%8E%E9%A3%9E%E8%A1%8C%E7%89%A9%22%29%20when%3A2d&hl=zh-CN&gl=CN&ceid=CN:zh-Hans
+  query_template: (UFO OR UAP OR "不明飞行物") when:2d
+  poll_interval_min: 60
+  enabled: true
+  expected_domains: []
+  title_suffix_rules: []
+  api_key_env: null
+  note: 实测 18 条
+  expected_status_on_first_run: ok
+
+# ---------------- S2 鉴权失败（api）----------------
+- code: tianapi_science
+  name: 天聚数行 科学探索
+  type: api
+  level: B
+  url: https://apis.tianapi.com/science/index
+  query_template: null
+  poll_interval_min: 120
+  enabled: false
+  expected_domains: []
+  title_suffix_rules: []
+  api_key_env: TIANAPI_KEY
+  note: 需求点名源；404 且需 key（TIANAPI_KEY）
+  expected_status_on_first_run: auth_error
+
+# ---------------- 内置兜底源（不可删除）----------------
+- code: manual
+  name: 手工导入
+  type: manual
+  level: C
+  url: null
+  query_template: null
+  poll_interval_min: 1440
+  enabled: true
+  expected_domains: []
+  title_suffix_rules: []
+  api_key_env: null
+  note: 内置源，不可删除；C 级线索与演示兜底（不会被调度）
+  expected_status_on_first_run: ok
+
+# ---------------- 演示样本（默认 enabled=false，演示时手动启用）----------------
+- code: phys_neuro_legacy
+  name: phys.org Neuroscience（旧地址）
+  type: rss
+  level: A
+  url: https://phys.org/rss-feed/neuroscience-news/
+  query_template: null
+  poll_interval_min: 30
+  enabled: false
+  expected_domains: [phys.org]
+  title_suffix_rules: [" - phys.org"]
+  api_key_env: null
+  note: 演示样本 S4：地址变迁，故意保留 404 旧地址
+  expected_status_on_first_run: down
+
+- code: esa_backup_html
+  name: ESA 备用（HTML 页）
+  type: rss
+  level: A
+  url: https://www.esa.int/Enabling_Support/Operations
+  query_template: null
+  poll_interval_min: 30
+  enabled: false
+  expected_domains: [esa.int]
+  title_suffix_rules: []
+  api_key_env: null
+  note: 演示样本 S5：返回 200 但内容不是 feed（实测 bozo=1、0 条）。按 04 §13.1 归 parse → down；starved 只适用于「合法但为空」的 feed（用例见 backend/tests/fixtures/feeds/empty.xml）
+  expected_status_on_first_run: down
+
+# ---------------- S2 鉴权失败（rss 403）----------------
+- code: atel
+  name: Astronomer's Telegram
+  type: rss
+  level: A
+  url: https://www.astronomerstelegram.org/rss
+  query_template: null
+  poll_interval_min: 15
+  enabled: false
+  expected_domains: [astronomerstelegram.org]
+  title_suffix_rules: []
+  api_key_env: null
+  note: 需求点名源；403（浏览器 UA 也 403），需 token
+  expected_status_on_first_run: auth_error

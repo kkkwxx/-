@@ -1,0 +1,178 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1600" viewBox="0 0 1500 1600" font-family="Microsoft YaHei, PingFang SC, Segoe UI, sans-serif">
+  <defs>
+    <marker id="f" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#2d3748"/>
+    </marker>
+    <marker id="fg" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#2e7d32"/>
+    </marker>
+    <marker id="fr" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#c53030"/>
+    </marker>
+  </defs>
+  <rect width="1500" height="1600" fill="#ffffff"/>
+
+  <text x="48" y="48" font-size="25" font-weight="700" fill="#1a202c">一条新闻从 link 到 A / B / C 的判定链</text>
+  <text x="48" y="78" font-size="14.5" fill="#5a6472">采集侧每落一条 raw_item，就跑一遍这条链；结果写进 article.source_level 和 source_level_reason</text>
+
+  <!-- ① 输入 -->
+  <rect x="200" y="112" width="400" height="88" rx="12" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.6"/>
+  <text x="220" y="142" font-size="15" font-weight="700" fill="#1a202c">① 采集到一个条目 raw_item</text>
+  <text x="220" y="166" font-size="12" fill="#475569">url ＝ feed 里的 link</text>
+  <text x="220" y="186" font-size="12" fill="#475569">resolved_url ＝ 回溯后的真实链接（GN 为 null）</text>
+  <line x1="400" y1="200" x2="400" y2="232" stroke="#2d3748" stroke-width="1.8" marker-end="url(#f)"/>
+
+  <!-- ② 取出处域名 -->
+  <rect x="200" y="232" width="400" height="168" rx="12" fill="#eef6ff" stroke="#4299e1" stroke-width="1.8"/>
+  <text x="220" y="260" font-size="15" font-weight="700" fill="#1c4532">② 取「出处域名」—— 按源类型选字段</text>
+  <text x="220" y="286" font-size="12.5" fill="#2c5282">· google_news / api → 只取 publisher_url</text>
+  <text x="234" y="306" font-size="11.5" fill="#5a6472">（条目里的 source url 属性，实测 44/44 条都有）</text>
+  <text x="220" y="330" font-size="12.5" fill="#2c5282">· rss / manual → 取 resolved_url，空则取 url</text>
+  <text x="220" y="354" font-size="12" font-weight="700" fill="#c53030">· 都取不到 → 直接判 C（rule1:no-origin）</text>
+  <text x="220" y="378" font-size="11.5" fill="#7b8794">聚合源绝不能用 link 兜底：它的域名恒为 google.com</text>
+  <line x1="400" y1="400" x2="400" y2="432" stroke="#2d3748" stroke-width="1.8" marker-end="url(#f)"/>
+
+  <!-- ③ 归一 -->
+  <rect x="200" y="432" width="400" height="100" rx="12" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.6"/>
+  <text x="220" y="460" font-size="15" font-weight="700" fill="#1a202c">③ 归一成注册域（eTLD+1）</text>
+  <text x="220" y="484" font-size="12" fill="#475569">news.sciencenet.cn → sciencenet.cn</text>
+  <text x="220" y="506" font-size="12" fill="#475569">news.bbc.co.uk → bbc.co.uk（不是 co.uk）</text>
+  <text x="220" y="524" font-size="11.5" fill="#c53030">后缀精确匹配：notnasa.gov 不命中 nasa.gov</text>
+  <line x1="400" y1="532" x2="400" y2="564" stroke="#2d3748" stroke-width="1.8" marker-end="url(#f)"/>
+
+  <!-- ④ 查表 -->
+  <rect x="200" y="564" width="400" height="124" rx="12" fill="#fffbea" stroke="#d69e2e" stroke-width="1.8"/>
+  <text x="220" y="592" font-size="15" font-weight="700" fill="#744210">④ 查 source_domain_rule：命中？</text>
+  <text x="220" y="616" font-size="12" fill="#5a6472">拿注册域去表里做后缀精确匹配</text>
+  <text x="220" y="642" font-size="12" font-weight="700" fill="#2e7d32">命中 → 直接用表里的等级，看右侧结果表</text>
+  <text x="220" y="666" font-size="12" font-weight="700" fill="#c53030">未命中 → 进第 ⑤ 步兜底</text>
+  <line x1="600" y1="600" x2="668" y2="600" stroke="#2e7d32" stroke-width="2" marker-end="url(#fg)"/>
+  <text x="604" y="592" font-size="11.5" font-weight="700" fill="#2e7d32">命中</text>
+  <line x1="400" y1="688" x2="400" y2="720" stroke="#c53030" stroke-width="1.8" marker-end="url(#fr)"/>
+  <text x="410" y="710" font-size="11.5" font-weight="700" fill="#c53030">未命中</text>
+
+  <!-- ⑤ 兜底 -->
+  <rect x="200" y="720" width="400" height="136" rx="12" fill="#f0fff4" stroke="#38a169" stroke-width="1.8"/>
+  <text x="220" y="748" font-size="15" font-weight="700" fill="#22543d">⑤ 兜底：官方源自证域名</text>
+  <text x="220" y="774" font-size="12.5" fill="#276749">source.type ＝ rss　且　source.level ＝ A</text>
+  <text x="220" y="796" font-size="12.5" fill="#276749">且　出处域名 ∈ source.expected_domains ？</text>
+  <text x="220" y="822" font-size="12" font-weight="700" fill="#2e7d32">是 → A（rule5），这是你原思路生效的地方</text>
+  <text x="220" y="844" font-size="12" font-weight="700" fill="#c53030">否 → 进第 ⑥ 步，判 C</text>
+  <line x1="600" y1="784" x2="668" y2="784" stroke="#2e7d32" stroke-width="2" marker-end="url(#fg)"/>
+  <text x="604" y="776" font-size="11.5" font-weight="700" fill="#2e7d32">是</text>
+  <line x1="400" y1="856" x2="400" y2="888" stroke="#c53030" stroke-width="1.8" marker-end="url(#fr)"/>
+  <text x="410" y="878" font-size="11.5" font-weight="700" fill="#c53030">否</text>
+
+  <!-- ⑥ 判 C -->
+  <rect x="200" y="888" width="400" height="104" rx="12" fill="#fff5f5" stroke="#e53e3e" stroke-width="1.8"/>
+  <text x="220" y="916" font-size="15" font-weight="700" fill="#9b2c2c">⑥ 判 C（rule6:unknown:域名）</text>
+  <text x="220" y="940" font-size="12" fill="#9b2c2c">注意：是「进待定池」，不是「丢弃」</text>
+  <text x="220" y="962" font-size="12" fill="#9b2c2c">判不准就交给人看 —— fail-safe 原则</text>
+  <text x="220" y="982" font-size="11.5" fill="#7b8794">宁可在待定池堆着，也不要把营销号推出去</text>
+  <line x1="400" y1="992" x2="400" y2="1024" stroke="#2d3748" stroke-width="1.8" marker-end="url(#f)"/>
+
+  <!-- ⑦ 未收录表 -->
+  <rect x="200" y="1024" width="400" height="96" rx="12" fill="#f7fafc" stroke="#718096" stroke-width="1.6" stroke-dasharray="6 4"/>
+  <text x="220" y="1052" font-size="15" font-weight="700" fill="#2d3748">⑦ 记入「未收录域名」表</text>
+  <text x="220" y="1076" font-size="12" fill="#475569">域名 ／ 命中次数 ／ 首次出现时间 ／ 来源示例</text>
+  <text x="220" y="1100" font-size="11.5" fill="#7b8794">这张表让白名单能靠数据长出来，而不是靠人猜</text>
+
+  <!-- 反馈回路 -->
+  <path d="M200,1072 L152,1072 L152,600 L194,600" fill="none" stroke="#718096" stroke-width="1.6" stroke-dasharray="7 4" marker-end="url(#f)"/>
+  <text x="140" y="840" font-size="11.5" fill="#4a5568" text-anchor="middle" transform="rotate(-90 140 840)">运营归类后，下一轮同域名直接命中表</text>
+
+  <!-- ===================== 右侧结果表 ===================== -->
+  <rect x="668" y="496" width="784" height="504" rx="14" fill="#f8fafc" stroke="#cbd5e0" stroke-width="1.6"/>
+  <text x="690" y="528" font-size="16" font-weight="700" fill="#2d3748">判定结果一览：level ／ reason ／ 去向</text>
+
+  <rect x="688" y="544" width="744" height="36" rx="6" fill="#e2e8f0"/>
+  <text x="702" y="568" font-size="12" font-weight="700" fill="#2d3748">情况</text>
+  <text x="898" y="568" font-size="12" font-weight="700" fill="#2d3748">level</text>
+  <text x="966" y="568" font-size="12" font-weight="700" fill="#2d3748">reason</text>
+  <text x="1214" y="568" font-size="12" font-weight="700" fill="#2d3748">去向</text>
+
+  <rect x="688" y="584" width="744" height="36" rx="6" fill="#f0fff4" stroke="#c6f6d5"/>
+  <text x="702" y="608" font-size="11.5" fill="#1a202c">命中 A 白名单</text>
+  <text x="898" y="608" font-size="12" font-weight="700" fill="#1b5e20">A</text>
+  <text x="966" y="608" font-size="11.5" fill="#475569">rule:nasa.gov</text>
+  <text x="1214" y="608" font-size="11.5" fill="#1b5e20">候选池</text>
+
+  <rect x="688" y="626" width="744" height="36" rx="6" fill="#ebf8ff" stroke="#bee3f8"/>
+  <text x="702" y="650" font-size="11.5" fill="#1a202c">命中 B 白名单</text>
+  <text x="898" y="650" font-size="12" font-weight="700" fill="#0d47a1">B</text>
+  <text x="966" y="650" font-size="11.5" fill="#475569">rule:sciencenet.cn</text>
+  <text x="1214" y="650" font-size="11.5" fill="#0d47a1">候选池</text>
+
+  <rect x="688" y="668" width="744" height="36" rx="6" fill="#f7fafc" stroke="#e2e8f0"/>
+  <text x="702" y="692" font-size="11.5" fill="#1a202c">命中 C 黑名单</text>
+  <text x="898" y="692" font-size="12" font-weight="700" fill="#616161">C</text>
+  <text x="966" y="692" font-size="11.5" fill="#475569">rule:weibo.com</text>
+  <text x="1214" y="692" font-size="11.5" fill="#616161">待定池</text>
+
+  <rect x="688" y="710" width="744" height="36" rx="6" fill="#f0fff4" stroke="#c6f6d5"/>
+  <text x="702" y="734" font-size="11.5" fill="#1a202c">⑤ 兜底通过（官方源自证）</text>
+  <text x="898" y="734" font-size="12" font-weight="700" fill="#1b5e20">A</text>
+  <text x="966" y="734" font-size="11.5" fill="#475569">rule5:fnal.gov</text>
+  <text x="1214" y="734" font-size="11.5" fill="#1b5e20">候选池</text>
+
+  <rect x="688" y="752" width="744" height="36" rx="6" fill="#fff5f5" stroke="#fed7d7"/>
+  <text x="702" y="776" font-size="11.5" fill="#1a202c">② 取不到出处域名</text>
+  <text x="898" y="776" font-size="12" font-weight="700" fill="#616161">C</text>
+  <text x="966" y="776" font-size="11.5" fill="#475569">rule1:no-origin</text>
+  <text x="1214" y="776" font-size="11.5" fill="#616161">待定池</text>
+
+  <rect x="688" y="794" width="744" height="36" rx="6" fill="#fff5f5" stroke="#fed7d7"/>
+  <text x="702" y="818" font-size="11.5" fill="#1a202c">⑥ 域名未收录</text>
+  <text x="898" y="818" font-size="12" font-weight="700" fill="#616161">C</text>
+  <text x="966" y="818" font-size="11.5" fill="#475569">rule6:unknown:cast.org.cn</text>
+  <text x="1214" y="818" font-size="11.5" fill="#9b2c2c">待定池 ＋ 记表</text>
+
+  <rect x="688" y="848" width="744" height="132" rx="10" fill="#fff" stroke="#e2e8f0"/>
+  <text x="702" y="874" font-size="12.5" font-weight="700" fill="#2d3748">两个必须写进代码的细节</text>
+  <text x="702" y="900" font-size="11.5" fill="#475569">· reason 一定要拼上命中的域名，审核台直接展示它，</text>
+  <text x="702" y="920" font-size="11.5" fill="#475569">　审核员一眼就知道「为什么这条是 C」，不用翻规则表。</text>
+  <text x="702" y="948" font-size="11.5" fill="#c53030">· 表里所有匹配都用后缀精确匹配，禁止用 contains，</text>
+  <text x="702" y="968" font-size="11.5" fill="#c53030">　否则 notnasa.gov 会被当成 NASA。</text>
+
+  <!-- ===================== 底部：两条真实走查 ===================== -->
+  <rect x="48" y="1128" width="700" height="436" rx="14" fill="#fff5f5" stroke="#fc8181" stroke-width="1.6"/>
+  <text x="70" y="1162" font-size="16" font-weight="700" fill="#9b2c2c">走查 A：Google News 条目</text>
+  <text x="70" y="1192" font-size="12" fill="#5a6472">标题：一文读懂2026诺贝尔物理学奖… - 中国科学技术协会</text>
+  <text x="70" y="1218" font-size="12" fill="#1a202c">link</text>
+  <text x="172" y="1218" font-size="11.5" fill="#475569">＝ https://news.google.com/rss/articles/CBMiigFBVV95…</text>
+  <text x="70" y="1244" font-size="12" fill="#1a202c">resolved_url</text>
+  <text x="172" y="1244" font-size="11.5" fill="#c53030">＝ null（四路径回溯全失效）</text>
+  <text x="70" y="1270" font-size="12" fill="#1a202c">publisher_url</text>
+  <text x="172" y="1270" font-size="11.5" fill="#2e7d32">＝ https://www.cast.org.cn　← 取这个</text>
+  <line x1="70" y1="1290" x2="726" y2="1290" stroke="#fed7d7" stroke-width="1.5"/>
+  <text x="70" y="1318" font-size="12" fill="#1a202c">③ 归一 → cast.org.cn</text>
+  <text x="70" y="1344" font-size="12" fill="#1a202c">④ 查表 → 未收录</text>
+  <text x="70" y="1370" font-size="12" fill="#1a202c">⑤ 兜底 → 源类型是 google_news，规则 5 不适用</text>
+  <text x="70" y="1396" font-size="12" fill="#1a202c">⑥ 结果 → C　reason ＝ rule6:unknown:cast.org.cn</text>
+  <text x="70" y="1422" font-size="12" font-weight="700" fill="#9b2c2c">去向 → 待定池；同时记一条「未收录：cast.org.cn」</text>
+  <text x="70" y="1456" font-size="12" fill="#2e7d32">运营在报表里看到「cast.org.cn 命中 37 次」→ 一键归为 B</text>
+  <text x="70" y="1478" font-size="12" fill="#2e7d32">→ 下一轮同域名自动走 B，不再进待定池</text>
+  <text x="70" y="1514" font-size="11.5" fill="#7b8794">这条路证明：拿不到跳转 URL 也能定级，靠条目自带的 source url。</text>
+  <text x="70" y="1536" font-size="11.5" fill="#7b8794">所以「互联网上跳转后的真实链接」并不是必需品。</text>
+
+  <rect x="776" y="1128" width="676" height="436" rx="14" fill="#f0fff4" stroke="#a5d6a7" stroke-width="1.6"/>
+  <text x="798" y="1162" font-size="16" font-weight="700" fill="#1b5e20">走查 B：Fermilab 里那条转载</text>
+  <text x="798" y="1192" font-size="12" fill="#5a6472">同一批 10 条里，9 条正常、1 条是外部转载</text>
+  <text x="798" y="1218" font-size="12" fill="#1a202c">源配置</text>
+  <text x="880" y="1218" font-size="11.5" fill="#475569">type ＝ rss　level ＝ A　expected_domains ＝ [fnal.gov]</text>
+  <line x1="798" y1="1236" x2="1430" y2="1236" stroke="#c6f6d5" stroke-width="1.5"/>
+
+  <text x="798" y="1264" font-size="12" font-weight="700" fill="#1b5e20">情况 1：正常的 9 条</text>
+  <text x="798" y="1288" font-size="12" fill="#1a202c">出处域名 ＝ news.fnal.gov → 归一 fnal.gov</text>
+  <text x="798" y="1312" font-size="12" fill="#1a202c">④ 查表未命中 → ⑤ 兜底命中（rss ＋ A ＋ 名单内）</text>
+  <text x="798" y="1336" font-size="12" font-weight="700" fill="#1b5e20">结果：A，reason ＝ rule5:fnal.gov → 候选池</text>
+  <text x="798" y="1360" font-size="11.5" fill="#7b8794">　这一档，你的原思路（按源 URL 的域名判断）完全正确</text>
+
+  <line x1="798" y1="1378" x2="1430" y2="1378" stroke="#c6f6d5" stroke-width="1.5"/>
+  <text x="798" y="1406" font-size="12" font-weight="700" fill="#c53030">情况 2：那条转载</text>
+  <text x="798" y="1430" font-size="12" fill="#1a202c">出处域名 ＝ www.bhpioneer.com → 归一 bhpioneer.com</text>
+  <text x="798" y="1454" font-size="12" fill="#1a202c">④ 查表未命中 → ⑤ 兜底：域名不在 [fnal.gov] 内</text>
+  <text x="798" y="1478" font-size="12" font-weight="700" fill="#9b2c2c">结果：C，reason ＝ rule6:unknown:bhpioneer.com → 待定池</text>
+  <text x="798" y="1502" font-size="11.5" fill="#7b8794">　没有被源级 A 带着变成 A —— 这就是兜底判断的价值</text>
+  <text x="798" y="1536" font-size="11.5" fill="#7b8794">　若将来 bhpioneer.com 被收录为 B，它自动走 B，不用改代码</text>
+</svg>

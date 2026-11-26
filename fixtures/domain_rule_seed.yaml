@@ -1,0 +1,81 @@
+# 域名 → 等级初版种子（03-信源管理 §6.5）
+# 口径：domain 一律是注册域 eTLD+1、小写、不含 www.（03 §6.4）
+# 带「Google News 实测命中」的条目是实测出来的真实出处域名，v0.1 漏了它们会导致 GN 源全部落在 C。
+
+# ---------------- A 级（官方 / 科研机构 / 主流科技媒体）----------------
+- domain: nasa.gov
+  level: A
+  note: 实测源；NASA 官方站
+- domain: esa.int
+  level: A
+  note: 实测源；ESA 官方站
+- domain: fnal.gov
+  level: A
+  note: 实测源；Fermilab 官方站
+- domain: astronomerstelegram.org
+  level: A
+  note: 实测源；天文学家电报（ATel）
+- domain: sciencedaily.com
+  level: A
+  note: 实测源；ScienceDaily 官方 feed
+- domain: phys.org
+  level: A
+  note: 实测源；phys.org 官方 feed
+- domain: xinhuanet.com
+  level: A
+  note: 新华社，官方媒体
+- domain: cctv.com
+  level: A
+  note: 央视，官方媒体
+- domain: cas.cn
+  level: A
+  note: 中国科学院；Google News 实测命中
+- domain: cast.org.cn
+  level: A
+  note: 中国科学技术协会；Google News 实测命中
+
+# ---------------- B 级（主流媒体 / 期刊，需与 A 级区分）----------------
+- domain: bbc.com
+  level: B
+  note: 主流媒体
+- domain: bbc.co.uk
+  level: B
+  note: 主流媒体；注意 eTLD+1 是 bbc.co.uk 而不是 co.uk
+- domain: reuters.com
+  level: B
+  note: 通讯社
+- domain: apnews.com
+  level: B
+  note: 通讯社
+- domain: theguardian.com
+  level: B
+  note: 主流媒体
+- domain: nature.com
+  level: B
+  note: 期刊，需人工核对是否为原始论文
+- domain: science.org
+  level: B
+  note: 期刊，需人工核对是否为原始论文
+- domain: space.com
+  level: B
+  note: 商业科技媒体
+- domain: sciencenet.cn
+  level: B
+  note: 科学网；Google News 实测命中
+
+# ---------------- C 级（blocklist）----------------
+- domain: weibo.com
+  level: C
+  note: 社交平台，UGC
+- domain: douban.com
+  level: C
+  note: 社交平台，UGC
+- domain: bilibili.com
+  level: C
+  note: 视频平台，UGC
+- domain: zhihu.com
+  level: C
+  note: 问答社区，UGC
+- domain: qq.com
+  level: C
+  note: 文档原文 mp.weixin.qq.com，归一后为 qq.com；微信公众号

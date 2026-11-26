@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>ESA 备用（HTML 页）</title>
+    <link>https://www.esa.int/Enabling_Support/Operations</link>
+    <description>合法 feed，但没有任何 item（空壳 feed，演示样本 S5）</description>
+  </channel>
+</rss>
