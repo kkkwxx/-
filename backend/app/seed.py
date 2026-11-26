@@ -31,14 +31,15 @@ from sqlalchemy.orm import Session
 
 from app.core.config import REPO_ROOT
 from app.core.db import SessionLocal, engine
-from app.models import Source, SourceDomainRule
+from app.models import KeywordRule, Source, SourceDomainRule
 
 # fixtures 在仓库根，不在 backend/ 里（REPO_ROOT 已指向仓库根）
 FIXTURES_DIR: Path = REPO_ROOT / "fixtures"
 SOURCE_SEED_FILE = "source_seed.yaml"
 DOMAIN_RULE_SEED_FILE = "domain_rule_seed.yaml"
+KEYWORD_RULE_SEED_FILE = "keyword_rule_seed.yaml"
+# 建表检查用：models 里的全部业务表
 
-# 建表检查用：7 张业务表（models 里的全部表）
 REQUIRED_TABLES = (
     "source",
     "source_domain_rule",
@@ -47,6 +48,8 @@ REQUIRED_TABLES = (
     "raw_item",
     "article",
     "review_action",
+    "keyword_rule",
+    "ai_run",
 )
 
 # 已存在时允许「补缺失」的字段（enabled / poll_interval_min 明确不在其中）
@@ -186,6 +189,45 @@ def seed_sources(session: Session) -> None:
     session.commit()
 
 
+
+def seed_keyword_rules(session: Session) -> int:
+    """按 ``(type, category, pattern)`` upsert 词表（05 §3 / §4）。
+
+    已存在的规则只补空的 ``weight`` / ``note``，不覆盖运营改过的值
+    ——与 ``seed_sources`` 同一条纪律（03 §10.2）。返回表内总条数。
+    """
+    items = _load_fixture(KEYWORD_RULE_SEED_FILE)
+    existing = {
+        (rule.type, rule.category, rule.pattern): rule
+        for rule in session.scalars(select(KeywordRule))
+    }
+
+    for item in items:
+        key = (item["type"], item["category"], item["pattern"])
+        rule = existing.get(key)
+        if rule is None:
+            created = KeywordRule(
+                type=item["type"],
+                category=item["category"],
+                pattern=item["pattern"],
+                weight=int(item.get("weight") or 0),
+                scope=item.get("scope") or "title_summary",
+                enabled=True,
+                note=item.get("note"),
+            )
+            session.add(created)
+            existing[key] = created
+            continue
+        # 已存在：只补空值
+        if not rule.weight and item.get("weight"):
+            rule.weight = int(item["weight"])
+        if _is_empty(rule.note) and not _is_empty(item.get("note")):
+            rule.note = item["note"]
+
+    session.commit()
+    return int(session.scalar(select(func.count()).select_from(KeywordRule)) or 0)
+
+
 # ---------------------------------------------------------------------------
 # 建表检查
 # ---------------------------------------------------------------------------
@@ -320,12 +362,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     with SessionLocal() as session:
         seed_domain_rules(session)
         seed_sources(session)
+        keyword_count = seed_keyword_rules(session)
         source_count = session.scalar(select(func.count()).select_from(Source)) or 0
         rule_count = (
             session.scalar(select(func.count()).select_from(SourceDomainRule)) or 0
         )
 
     print(f"seeded {source_count} sources, {rule_count} domain rules")
+    print(f"keyword rules: {keyword_count}")
 
     if not args.verify:
         return 0

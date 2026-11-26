@@ -67,6 +67,13 @@ class Settings(BaseSettings):
     LLM_RESPONSE_FORMAT: str = "json_object"
     LLM_DAILY_TOKEN_BUDGET: int = 200_000
 
+    # ---- 预处理与事件判定（05 §11） ----
+    PREPROCESS_BATCH_SIZE: int = 50        # 每轮处理条数
+    PREPROCESS_CONCURRENCY: int = 4        # AI 并发，受 LLM_DAILY_TOKEN_BUDGET 约束
+    EVENT_CONFIDENCE_MIN: float = 0.7      # 进 candidate 的置信度门槛（05 §6.5）
+    NOT_EVENT_CONFIDENCE_MIN: float = 0.8  # 直接判 not_event 的置信度门槛（05 §6.5）
+    PROMPT_VERSION: str = "v1"             # 写进 ai_run.prompt_version，改 prompt 必须升版本
+
     # ---- 其它 ----
     REPLAY_MODE: bool = False
     RAW_HTML_MAX_DB_BYTES: int = 1_048_576

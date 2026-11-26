@@ -24,6 +24,7 @@ dependencies = [
     "python-dateutil>=2.9",
     "python-json-logger>=2.0",
     "pyyaml>=6.0.2",
+    "openai>=3.60.0",
 ]
 
 [dependency-groups]

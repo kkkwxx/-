@@ -11,6 +11,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
@@ -98,6 +99,8 @@ class Article(Base, TimestampMixin):
     event_type: Mapped[str | None] = mapped_column(String(32))
     event_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     content_nature: Mapped[str | None] = mapped_column(String(32))
+    # 05 §6.4：AI 给的事件置信度，进 candidate 的门槛见 EVENT_CONFIDENCE_MIN
+    event_confidence: Mapped[float | None] = mapped_column(Numeric(3, 2))
     risk_flags: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
     review_priority: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
@@ -108,6 +111,12 @@ class Article(Base, TimestampMixin):
         CheckConstraint("source_level IN ('A','B','C')", name="ck_article_level"),
         CheckConstraint(
             "resolve_status IN ('resolved','unresolved')", name="ck_article_resolve"
+        ),
+        # 05 §7.1：五类 + other（架构图明确要求 other 兜底），NULL = 未判定
+        CheckConstraint(
+            "event_type IS NULL OR event_type IN ('deep_space_particle','neo',"
+            "'exoplanet','bci_consciousness','anomaly_psychic','other')",
+            name="ck_article_event_type",
         ),
         CheckConstraint(
             "status IN ('ingested','rule_rejected','duplicate','processing','candidate',"

@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 from app.core.db import Base
+from app.models.ai import AiRun
 from app.models.audit import ReviewAction
+from app.models.keyword import KeywordRule
 from app.models.pipeline import Article, RawItem
 from app.models.source import Source, SourceDomainRule, UnknownDomain
 from app.models.task import TaskRun
 
 __all__ = [
     "Base",
+    "AiRun",
     "Article",
+    "KeywordRule",
     "RawItem",
     "ReviewAction",
     "Source",

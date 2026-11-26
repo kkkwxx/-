@@ -1,0 +1,88 @@
+# 05-预处理与事件判定 §4/§7/§8 的词表种子。
+# pattern 一律按「正则 + re.search + IGNORECASE」使用；拉丁缩写必须带 \b 边界，
+# 否则 \bNEO\b 会命中 Neolithic（实采里就有“Neolithic Denmark”）。
+# weight：exclude_soft 为负分，signal 为正分，其余类型忽略。
+
+# ---------------- 硬排除（命中即 rule_rejected）----------------
+- type: exclude_hard
+  category: finance
+  pattern: '\((\d{6})\.(SZ|SH|HK)\)|（(\d{6})\.(SZ|SH|HK)）'
+  note: 股票代码是最硬信号。实采：完美世界(002624.SZ)、微创脑科学(02172.HK)
+
+- type: exclude_hard
+  category: finance
+  pattern: '概念股|涨停|跌停|净亏|净利|营收|市值|机构调研|北向资金|减持|增持|招股|业绩预告'
+  note: 实采：多只概念股获机构扎堆调研(附股)、上半年净亏损1.18亿元
+
+- type: exclude_hard
+  category: game
+  pattern: '副本|攻略|赛季|试玩|开服|抽卡|皮肤|版本更新|手游|端游'
+  note: 实采：魔兽世界【无限服】副本门钥匙任务大盘点、Quack Hunters 试玩版公开
+
+- type: exclude_hard
+  category: entertain
+  pattern: '电影|电视剧|预告片|上映|票房|番剧|短剧|综艺'
+  note: 需求文档点名要排的影视类；本批未命中，保留
+
+- type: exclude_hard
+  category: divination
+  pattern: '星座|运势|财运|桃花|今日运程|算命|风水|开光|转运|免费测算'
+  note: 需求文档点名要排的星座命理类；本批未命中，保留
+
+# ---------------- 软扣分（不拒绝，只降 review_priority，取最负一条不累加）----------------
+- type: exclude_soft
+  category: industry
+  weight: -3
+  pattern: '大会|论坛|峰会|研讨会|沙龙|博览会|标委会|工作组|联盟|产业园|创新中心|产业对接|活动预告|发布会'
+  note: 实采 13 条。风险案例：新华网《2026腾冲科学家论坛将首次举办脑机接口等特色专题活动》属 A 级源正经预告 → 只软扣分
+
+- type: exclude_soft
+  category: policy
+  weight: -2
+  pattern: '政策|规划|指导意见|试点|部委|工信部|科技部|省级|市级'
+  note: 实采 9 条。风险案例：NASA 启动试点任务是事件
+
+- type: exclude_soft
+  category: recruit
+  weight: -5
+  pattern: '招聘|招生|考试|报名|岗位|宣讲会'
+  note: 本批未命中
+
+# ---------------- 栏目锚定词（白名单要用，也参与锚定词加分）----------------
+- type: anchor
+  category: deep_space_particle
+  pattern: '中微子|暗物质|引力波|黑洞|超新星|类星体|neutrino|dark matter|gravitational wave'
+  note: 深空 / 粒子
+
+- type: anchor
+  category: neo
+  pattern: '小行星|近地天体|飞掠|采样返回|asteroid|\bNEO\b|flyby|\bDART\b|DART 任务|撞击小行星'
+  note: 近地天体。\bNEO\b 带边界，避免命中原行星的 neo-lithic
+
+- type: anchor
+  category: exoplanet
+  pattern: '系外行星|类地行星|宜居带|超级地球|exoplanet|habitable zone'
+  note: 新星球 / 类地行星
+
+- type: anchor
+  category: bci_consciousness
+  pattern: '脑机接口|意念控制|脑电|神经解码|脑机|意识|\bBCI\b|Neuralink'
+  note: 脑机 / 意识
+
+- type: anchor
+  category: anomaly_psychic
+  pattern: 'UFO|UAP|不明飞行物|灵异|通灵|超自然|paranormal|外星'
+  note: 异常 / 灵能
+
+# ---------------- 事件动词（白名单救回 + is_event 提示）----------------
+- type: event_verb
+  category: verb
+  pattern: '发现|首次|率先|证实|确认|观测到|探测到|捕捉到|发射|着陆|撞击|飞掠|获批|批准|临床试验|手术|植入|受试者|患者|突破|刷新纪录|宣布|发表|启动试验|拍到'
+  note: 命中它 + 锚定词 → 忽略全部软扣分
+
+# ---------------- 泛宇宙信号词（只加分，不作查询条件）----------------
+- type: signal
+  category: signal
+  weight: 2
+  pattern: '宇宙|深空|维度|量子|外星|地外|未知信号|无法解释|首次|突破|异常'
+  note: 04 §5.2 第二组词；只用于 review_priority 加分

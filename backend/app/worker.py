@@ -4,7 +4,8 @@
 
 * 与 API 分离：API 只写 ``task_run(pending)``，Worker 捞。
 * **tick 只派发，绝不执行**：把活丢进线程池立即返回，否则慢源会把后续 tick 全拖垮。
-* 三个 job：``tick``（30 s）、``poll_pending``（30 s）、``fetch_full_text``（60 s）。
+* 四个 job：``tick``（30 s）、``poll_pending``（30 s）、``fetch_full_text``（60 s）、
+  ``preprocess``（60 s，05-预处理与事件判定）。
 """
 
 from __future__ import annotations
@@ -23,7 +24,7 @@ from app.core.db import SessionLocal
 from app.core.logging import setup_logging
 from app.models.pipeline import RawItem
 from app.models.task import TaskRun
-from app.services import collector, fulltext, recalc
+from app.services import collector, fulltext, preprocess, recalc
 
 logger = logging.getLogger(__name__)
 
@@ -126,6 +127,34 @@ def fetch_full_text() -> None:
     _executor.submit(fulltext.run_full_text_batch, run_id)
 
 
+
+def run_preprocess() -> None:
+    """60 s 一次：有 ingested 条目就投递一批预处理（05 §2 / §9）。
+
+    只做 ``SELECT EXISTS`` 级别的判断，真正的活丢进线程池立即返回——
+    一批最多 ``PREPROCESS_BATCH_SIZE`` 条，AI 调用在其中自带并发。
+    """
+    if _shutdown.is_set():
+        return
+    session = SessionLocal()
+    try:
+        pending = preprocess.count_pending(session)
+    except Exception:
+        logger.exception("preprocess 查询待处理条目失败")
+        return
+    finally:
+        session.close()
+
+    if pending <= 0:
+        return
+    logger.info(
+        "预处理：待处理 %s 条，投递一批（上限 %s）",
+        pending,
+        settings.PREPROCESS_BATCH_SIZE,
+    )
+    _executor.submit(preprocess.run_preprocess_batch)  # 不 join、不 wait
+
+
 def _reclaim() -> None:
     session = SessionLocal()
     try:
@@ -157,7 +186,8 @@ def _shutdown_all(scheduler: BlockingScheduler | None = None) -> None:
 def main() -> None:
     setup_logging()
     logger.info(
-        "Worker 启动：并发 %s，轮询 tick 30s / pending 30s / 全文 60s",
+        "Worker 启动：并发 %s，job：tick 30s / poll_pending 30s / fetch_full_text 60s / "
+        "preprocess 60s",
         settings.CRAWL_SOURCE_CONCURRENCY,
     )
     _reclaim()
@@ -189,6 +219,15 @@ def main() -> None:
         coalesce=True,
         misfire_grace_time=300,
         id="fetch_full_text",
+    )
+    scheduler.add_job(
+        run_preprocess,
+        "interval",
+        seconds=60,
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=300,
+        id="preprocess",
     )
 
     try:
