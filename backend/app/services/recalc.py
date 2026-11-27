@@ -63,8 +63,14 @@ def recalc_article_levels(session: Session, *, dry_run: bool = False) -> dict:
             continue
         changed += 1
         if not dry_run:
+            old_level = article.source_level
             article.source_level = grade.level
             article.source_level_reason = grade.reason
+            # 同步调整 review_priority 中的等级权重差值（A=30, B=15, C=0）
+            level_score = {"A": 30, "B": 15, "C": 0}
+            delta = level_score.get(grade.level, 0) - level_score.get(old_level, 0)
+            if delta:
+                article.review_priority = int(article.review_priority or 0) + delta
 
     skipped_published = session.execute(
         select(func.count())

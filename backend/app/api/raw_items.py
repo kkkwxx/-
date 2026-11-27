@@ -22,6 +22,7 @@ from app.models.source import Source
 from app.schemas.source import ManualImportRequest, ManualImportResponse
 from app.services.collector import item_url_hash, persist_items
 from app.services.dto import FetchResult, RawItemDraft
+from app.services.fetch import check_safe_outbound_url
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,14 @@ def manual_import(
     url = (payload.url or "").strip()
     if not url:
         raise AppError(VALIDATION_FAILED, "url 必填", status_code=400, detail={"field": "url"})
+    unsafe_reason = check_safe_outbound_url(url)
+    if unsafe_reason is not None:
+        raise AppError(
+            VALIDATION_FAILED,
+            f"URL 安全校验未通过：{unsafe_reason}",
+            status_code=400,
+            detail={"field": "url"},
+        )
 
     source_code = (payload.source_code or "manual").strip() or "manual"
     source = db.execute(
@@ -55,6 +64,9 @@ def manual_import(
         )
 
     now = datetime.now(timezone.utc)
+    pub_at = payload.published_at
+    if pub_at is not None and pub_at.tzinfo is None:
+        pub_at = pub_at.replace(tzinfo=timezone.utc)
     draft = RawItemDraft(
         source_id=source.id,
         url=url,
@@ -62,7 +74,7 @@ def manual_import(
         fetched_at=now,
         resolved_url=url,
         summary=payload.summary,
-        published_at=payload.published_at,
+        published_at=pub_at,
         extra={"manual_import": True},
     )
     result = FetchResult(items=[draft], attempts=0, duration_ms=0, stats={"fetched": 1})

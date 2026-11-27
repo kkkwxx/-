@@ -28,6 +28,8 @@ class RawItemDraft:
 class FetchResult:
     items: list[RawItemDraft] = field(default_factory=list)
     not_modified: bool = False
+    etag: str | None = None
+    last_modified: str | None = None
     error_kind: str | None = None
     error: str | None = None
     attempts: int = 0

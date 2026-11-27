@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 import threading
 import time
@@ -57,6 +58,17 @@ class FetchOutcome:
     truncated: bool = False
 
 
+class _UnsafeRedirectError(httpx.HTTPError):
+    """重定向目标命中 SSRF 防护拦截，禁止重试。"""
+
+
+def _verify_request_hook(request: httpx.Request) -> None:
+    """httpx 请求级钩子：拦截每一跳重定向指向内网/本机/非法协议的 SSRF 绕过。"""
+    unsafe = check_safe_outbound_url(str(request.url))
+    if unsafe is not None:
+        raise _UnsafeRedirectError(f"重定向目标被安全校验拒绝：{unsafe}")
+
+
 def get_client() -> httpx.Client:
     """整个进程共用一个 Client（禁止每请求新建，实测握手失败率 40—60%）。"""
     global _client
@@ -70,6 +82,7 @@ def get_client() -> httpx.Client:
                     limits=httpx.Limits(max_connections=8, max_keepalive_connections=8),
                     http2=False,
                     proxy=settings.proxy,
+                    event_hooks={"request": [_verify_request_hook]},
                 )
     return _client
 
@@ -121,6 +134,43 @@ def _classify_status(status: int) -> str:
     return "http_5xx"
 
 
+def _is_blocked_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_reserved or ip.is_unspecified:
+        return True
+    mapped = getattr(ip, "ipv4_mapped", None)
+    if mapped is not None and _is_blocked_ip(mapped):
+        return True
+    return False
+
+
+def check_safe_outbound_url(url: str) -> str | None:
+    """SSRF 防护：仅允许 http/https，拦截本机/私网/链路本地/云元数据/IPv4-mapped IPv6 及数字伪装 IP。"""
+    try:
+        parsed = urlsplit((url or "").strip())
+    except ValueError:
+        return "URL 格式非法"
+    if parsed.scheme.lower() not in ("http", "https"):
+        return f"不允许的协议：{parsed.scheme or '空'}（仅允许 http/https）"
+    host = (parsed.hostname or "").strip().lower().rstrip(".")
+    if not host:
+        return "URL 缺少主机名"
+    if host in ("localhost", "localhost.localdomain") or host.endswith(".local") or host.endswith(".internal"):
+        return f"禁止访问本地或内网域名：{host}"
+    # 拦截纯十进制/十六进制/八进制数字伪装 IP（如 http://2130706433 或 0x7f000001）
+    if host.isdigit() or host.startswith("0x"):
+        return f"禁止使用数字/十六进制伪装主机名：{host}"
+    try:
+        ip = ipaddress.ip_address(host)
+        if _is_blocked_ip(ip):
+            return f"禁止访问内网或保留 IP：{host}"
+    except ValueError:
+        # 检查简写 IPv4（如 127.1）或含八进制段的 IPv4 形式
+        parts = host.split(".")
+        if parts and all(p.isdigit() or p.startswith("0x") for p in parts):
+            return f"禁止使用非标准数字 IP：{host}"
+    return None
+
+
 def fetch(
     url: str,
     *,
@@ -128,7 +178,15 @@ def fetch(
     timeout: float | None = None,
     max_attempts: int | None = None,
 ) -> FetchOutcome:
-    """抓一个 URL。成功返回 2xx/304；失败抛 FetchError（分类见 04 §13.1）。"""
+    """抓一个 URL。成功返回 2xx/304；失败返回错误分类（含 SSRF 拦截）。"""
+    unsafe_reason = check_safe_outbound_url(url)
+    if unsafe_reason is not None:
+        return FetchOutcome(
+            error_kind="http_4xx",
+            error=f"URL 安全校验拒绝：{unsafe_reason}",
+            attempts=0,
+            duration_ms=0,
+        )
     timeout = timeout if timeout is not None else settings.CRAWL_TIMEOUT_SECONDS
     max_attempts = max_attempts if max_attempts is not None else settings.CRAWL_MAX_ATTEMPTS
     client = get_client()
@@ -180,6 +238,14 @@ def fetch(
         return FetchOutcome(
             error_kind="connect",
             error=f"{type(exc).__name__}: {exc}",
+            attempts=attempts,
+            duration_ms=elapsed,
+        )
+    except _UnsafeRedirectError as exc:
+        elapsed = int((time.monotonic() - started) * 1000)
+        return FetchOutcome(
+            error_kind="http_4xx",
+            error=str(exc),
             attempts=attempts,
             duration_ms=elapsed,
         )

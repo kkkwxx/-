@@ -1,0 +1,308 @@
+# 需求文档 v1.0 §10 全部 10 条验收用例（双用途：自动化回归测试 + 演示样例灌库）
+- id: case01_neutrino_result
+  name: 中微子实验成果
+  source_level: A
+  publisher_name: 新华网
+  url: https://www.xinhuanet.com/tech/20261127/juno-neutrino-first-result.html
+  title: 江门中微子实验（JUNO）正式发布首个物理成果
+  summary: 位于广东江门地下700米的江门中微子实验合作组今日宣布发布首个物理成果，首次以突破性精度测定中微子振荡关键参数，验证了巨型液体闪烁体探测器性能。
+  expect_status: candidate
+  expect_event_type: deep_space_particle
+  judge_replay:
+    is_event: true
+    event_type: deep_space_particle
+    category: scientific_breakthrough
+    content_nature: 科学事实
+    confidence: 0.96
+    reason: 江门中微子实验正式发布首个物理成果，具备明确主体、动作与可核验来源
+    entities: ["江门中微子实验", "JUNO", "中微子"]
+    event_action: release
+    event_time: "2026-11-27"
+    is_future_event: false
+  generate_replay:
+    fact_anchor: 中国江门中微子实验（JUNO）发布首个物理成果，以高精度测得中微子振荡关键参数。
+    title_candidates:
+      - title: 科学家抓到“鬼”了？
+        style_tag: 恐怖片式
+        hook_score: 5
+        rationale: 用幽灵粒子双关制造极强好奇心
+      - title: 地下700米逮到幽灵粒子！
+        style_tag: 科幻片式
+        hook_score: 4
+        rationale: 突出大科学装置场景
+      - title: 中国探测器测出宇宙隐身客！
+        style_tag: 活久见式
+        hook_score: 4
+        rationale: 拟人化抓眼球
+    body_lead: 别怕，这里的“鬼”是几乎不跟物质反应的中微子，也叫“幽灵粒子”。中国江门中微子实验这次测到了关键数据。
+    body_summary: 位于广东地下700米的江门中微子实验（专门捕捉幽灵粒子的巨型球形探测器）团队宣布发布首个物理成果，高精度测得中微子振荡参数。这验证了装置的国际领先灵敏度，也帮人类进一步破解宇宙物质从何而来的终极谜题。
+    self_risk_flags: []
+
+- id: case02_neutrino_explainer
+  name: 中微子科普
+  source_level: B
+  publisher_name: 科学网
+  url: https://news.sciencenet.cn/htmlnews/2026/11/neutrino-explainer.html
+  title: 中微子是什么？一文读懂宇宙中的幽灵粒子
+  summary: 中微子是一种电中性、质量极小的基本粒子，每秒有数万亿个穿过人体。本文带你系统了解中微子的发现历史与基本性质。
+  expect_status: rule_rejected
+  expect_reject_prefix: "not_event:explainer"
+  judge_replay:
+    is_event: false
+    event_type: null
+    category: explainer
+    content_nature: 科学事实
+    confidence: 0.95
+    reason: 属于基础概念科普，没有刚发生的具体事件节点
+    entities: ["中微子"]
+    event_action: null
+    event_time: null
+    is_future_event: false
+
+- id: case03_asteroid_flyby
+  name: 小行星飞掠
+  source_level: A
+  publisher_name: NASA JPL CNEOS
+  url: https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html#/?sstr=2026%20XX1
+  title: 近地小行星 2026 XX1 将于 11 月 29 日近距离飞掠地球
+  summary: NASA JPL 近地天体研究中心监测显示，小行星 2026 XX1 将于 11 月 29 日近距离飞掠地球，最近距离约 0.82 倍地月距离，估算直径约 35 米，目前无撞击威胁。
+  is_future_event: true
+  expect_status: candidate
+  expect_event_type: neo
+  judge_replay:
+    is_event: true
+    event_type: neo
+    category: close_approach
+    content_nature: 科学事实
+    confidence: 0.98
+    reason: NASA 监测到具体编号小行星将于明确日期飞掠地球
+    entities: ["2026 XX1", "NASA JPL"]
+    event_action: flyby
+    event_time: "2026-11-29"
+    is_future_event: true
+  generate_replay:
+    fact_anchor: NASA JPL 监测显示小行星 2026 XX1 将于 11 月 29 日以 0.82 倍地月距离飞掠地球，目前无撞击威胁。
+    title_candidates:
+      - title: 小行星贴脸地球！
+        style_tag: 贴脸式
+        hook_score: 5
+        rationale: 贴脸强冲击感
+      - title: 比月亮还近！太空巨石擦肩地球
+        style_tag: 科幻片式
+        hook_score: 4
+        rationale: 给出距离对比悬念
+      - title: 11月29日有颗小行星直扑地月轨道？
+        style_tag: 反转式
+        hook_score: 4
+        rationale: 带时间节点的悬念问句
+    body_lead: 这颗编号 2026 XX1 的小行星会在 11 月 29 日近距离飞掠地球，最近距离比月亮还近，但目前没有撞击威胁。
+    body_summary: 美国航天局喷气推进实验室（NASA JPL）轨道监测发现，直径约 35 米的近地小行星（轨道接近地球的太阳系小天体）2026 XX1 将以约 0.82 倍地月距离擦肩而过。轨道已精确锁定，大家放心吃瓜，不需要囤物资。
+    self_risk_flags: []
+
+- id: case04_starry_photo
+  name: 普通星空图
+  source_level: A
+  publisher_name: NASA
+  url: https://www.nasa.gov/image-article/milky-way-night-sky-photo/
+  title: 每日一图：智利高原拍摄的绝美银河星空摄影
+  summary: 摄影师在智利阿塔卡马沙漠记录下了秋季银河横跨地平线的璀璨瞬间，展示了南半球夜空的壮丽色彩。
+  expect_status: rule_rejected
+  expect_reject_prefix: "not_event:image"
+  judge_replay:
+    is_event: false
+    event_type: null
+    category: image
+    content_nature: 科学事实
+    confidence: 0.94
+    reason: 普通天文摄影美图赏析，无科学或异常事件发生
+    entities: ["银河"]
+    event_action: null
+    event_time: null
+    is_future_event: false
+
+- id: case05_exoplanet_discovery
+  name: 类地行星发现
+  source_level: A
+  publisher_name: phys.org
+  url: https://phys.org/news/2026-11-earth-sized-exoplanet-candidate.html
+  title: 天文学家在 40 光年外宜居带发现一颗地球大小类地行星候选体
+  summary: 国际观测团队利用凌星巡天望远镜在距地球 40 光年的红矮星宜居带内发现一颗类地行星候选体，半径约为地球 1.08 倍，其大气成分与宜居性仍需进一步验证。
+  expect_status: candidate
+  expect_event_type: exoplanet
+  judge_replay:
+    is_event: true
+    event_type: exoplanet
+    category: exoplanet_discovery
+    content_nature: 科研进展
+    confidence: 0.93
+    reason: 国际团队新发现宜居带类地行星候选体，具备明确观测成果
+    entities: ["类地行星候选体", "宜居带"]
+    event_action: discovery
+    event_time: "2026-11-26"
+    is_future_event: false
+  generate_replay:
+    fact_anchor: 国际团队在 40 光年外红矮星宜居带发现半径约 1.08 倍地球的类地行星候选体，宜居性仍待进一步验证。
+    title_candidates:
+      - title: 地球2.0找到了？
+        style_tag: 科幻片式
+        hook_score: 5
+        rationale: 地球2.0风格词直击痛点
+      - title: 40光年外现身神秘类地星球！
+        style_tag: 活久见式
+        hook_score: 4
+        rationale: 突出距离与新发现
+      - title: 科学家在宜居带逮到一颗新地球？
+        style_tag: 反转式
+        hook_score: 4
+        rationale: 轻松悬疑口吻
+    body_lead: 所谓“地球2.0”是一颗类地行星候选，不是马上能搬过去。它大小接近地球，但距离和宜居性还要继续研究。
+    body_summary: 国际天文团队借助凌星巡天望远镜，在 40 光年外恒星的宜居带（温度刚好可能允许液态水存在的区域）发现了这颗半径约地球 1.08 倍的系外行星候选体。它有没有大气层和生命条件，后续还要靠韦伯望远镜继续深挖。
+    self_risk_flags: []
+
+- id: case06_bci_experiment
+  name: 脑电控制实验
+  source_level: A
+  publisher_name: ScienceDaily
+  url: https://www.sciencedaily.com/releases/2026/11/bci-robotic-arm-control.htm
+  title: 研究团队利用非侵入式脑电信号实现机械臂实时精细控制
+  summary: 高校神经工程实验室今日发表新成果，受试者佩戴高精度脑电帽，仅通过想象手部动作即可实时解码神经信号并操控机械臂完成抓取任务。
+  expect_status: candidate
+  expect_event_type: bci_consciousness
+  judge_replay:
+    is_event: true
+    event_type: bci_consciousness
+    category: experiment_breakthrough
+    content_nature: 科研进展
+    confidence: 0.92
+    reason: 科研团队发布脑电信号实时控制机械臂的实验突破
+    entities: ["脑电信号", "机械臂"]
+    event_action: experiment
+    event_time: "2026-11-26"
+    is_future_event: false
+  generate_replay:
+    fact_anchor: 研究团队在实验室通过非侵入式脑电信号解码，实现受试者意念操控机械臂完成实时抓取动作。
+    title_candidates:
+      - title: 不用手也能驭剑？
+        style_tag: 科幻片式
+        hook_score: 5
+        rationale: 修仙梗制造极强反差悬念
+      - title: 靠“想”就能抓东西，科幻成真？
+        style_tag: 反转式
+        hook_score: 4
+        rationale: 突出大脑直连机械臂
+      - title: 脑电黑科技炸场，意念控物有戏了？
+        style_tag: 活久见式
+        hook_score: 4
+        rationale: 节奏轻快抓眼球
+    body_lead: 这是脑电信号控制机械臂的实验，不是真修仙。受试者靠“想”完成动作，实验室里确实做到了。
+    body_summary: 高校神经工程团队开发出新型非侵入式脑机接口（不用开颅手术、直接贴头皮读取脑电波的技术），受试者只要在脑海里想象动作，系统就能实时翻译指令指挥机械臂精准抓取物体。虽然还在实验室阶段，但给未来康复辅助打开了大空间。
+    self_risk_flags: []
+
+- id: case07_bci_ad
+  name: 脑机头环广告
+  source_level: C
+  publisher_name: 某电商推广
+  url: https://shop.example.com/bci-headband-presale
+  title: 限时预售！新一代智能脑机睡眠助眠头环正式开启众筹推广
+  summary: 限时立减 300 元，戴上即测脑电波助眠放松，早鸟预售名额有限点击立即抢购。
+  expect_status: rule_rejected
+  expect_reject_prefix: "not_event:promo"
+  judge_replay:
+    is_event: false
+    event_type: null
+    category: promo
+    content_nature: 伪科学主张
+    confidence: 0.97
+    reason: 纯商业预售与商品推广广告
+    entities: ["脑机头环"]
+    event_action: null
+    event_time: null
+    is_future_event: false
+
+- id: case08_thai_taoist_show
+  name: 泰国道士综艺
+  source_level: B
+  publisher_name: 凤凰网
+  url: https://ent.ifeng.com/c/20261127/thai-unseen-taoist.html
+  title: 泰国灵异综艺《UNSEEN：通灵者之战》中国道士参赛引发全网讨论
+  summary: 近日泰国热播灵异挑战节目《UNSEEN：通灵者之战》中出现中国道士携传统术数元素登台参赛，节目片段在社交平台引发热烈讨论。
+  expect_status: pending
+  expect_event_type: anomaly_psychic
+  judge_replay:
+    is_event: true
+    event_type: anomaly_psychic
+    category: paranormal_show
+    content_nature: 娱乐化灵异
+    confidence: 0.91
+    reason: 泰国灵异综艺节目播出及中国道士参赛话题引发讨论，属异常/灵能娱乐事件
+    entities: ["UNSEEN：通灵者之战", "中国道士"]
+    event_action: show_appearance
+    event_time: "2026-11-26"
+    is_future_event: false
+  generate_replay:
+    fact_anchor: 泰国灵异挑战综艺《UNSEEN：通灵者之战》中出现中国道士参赛片段，引发网络讨论，属娱乐节目。
+    title_candidates:
+      - title: 中国道士杀进泰国灵异综艺！
+        style_tag: 活久见式
+        hook_score: 5
+        rationale: 跨界反差感拉满
+      - title: 东方术数踢馆泰国通灵大赛？
+        style_tag: 吃瓜式
+        hook_score: 4
+        rationale: 强化对抗悬念
+      - title: 泰国通灵综艺惊现中国道士炸场！
+        style_tag: 恐怖片式
+        hook_score: 4
+        rationale: 风格词炸场吸睛
+    body_lead: 这是泰国灵异综艺《UNSEEN：通灵者之战》的参赛话题，属于娱乐节目，别当真。
+    body_summary: 泰国灵异挑战类真人秀《UNSEEN：通灵者之战》近日因一位中国道士选手的登场在社媒刷屏，节目中展示了传统民俗与术数元素。需要提醒的是，这类通灵挑战属于强剧本化的娱乐综艺效果，图个乐呵看热闹就好，切勿当作真实超自然现象。
+    self_risk_flags: ["supernatural"]
+
+- id: case09_horoscope
+  name: 星座运势
+  source_level: C
+  publisher_name: 某自媒体
+  url: https://weibo.com/u/12345/horoscope-weekly
+  title: 本周十二星座运势大揭秘：水逆退散桃花财运暴涨
+  summary: 本周星座运势指南，白羊座事业飙升，双鱼座迎来桃花运，快来测算你的幸运色。
+  expect_status: rule_rejected
+  expect_reject_prefix: "rule:divination:"
+
+- id: case10_ufo_unverified
+  name: UFO 无来源视频
+  source_level: C
+  publisher_name: 微博线索
+  url: https://weibo.com/u/998877/ufo-night-lights
+  title: 网友拍到夜空神秘三角形发光不明飞行物盘旋视频引发热议
+  summary: 社交平台流传一段无明确拍摄时间与官方核验的夜空发光 UFO 视频，有网友猜测是外星飞船，也有观点认为是无人机编队。
+  expect_status: pending
+  expect_event_type: anomaly_psychic
+  judge_replay:
+    is_event: true
+    event_type: anomaly_psychic
+    category: ufo_sighting
+    content_nature: 未证实目击
+    confidence: 0.82
+    reason: 社交平台流传的 UFO 目击视频，无官方核验信源，应入待定池
+    entities: ["三角形发光不明飞行物", "UFO"]
+    event_action: sighting
+    event_time: "2026-11-26"
+    is_future_event: false
+  generate_replay:
+    fact_anchor: 社交平台流传一段无官方来源核验的夜空三角形发光不明飞行物视频，引发网友热议，尚未证实。
+    title_candidates:
+      - title: 夜空惊现三角光点，细思极恐？
+        style_tag: 恐怖片式
+        hook_score: 4
+        rationale: 保留悬念且不越红线
+      - title: 神秘发光物盘旋夜空，UFO现形了？
+        style_tag: 科幻片式
+        hook_score: 4
+        rationale: 问句设悬不作定论
+      - title: 网友拍到天上飘着诡异亮光？
+        style_tag: 活久见式
+        hook_score: 3
+        rationale: 客观口语化描述
+    body_lead: 这是社交平台流传的一段夜空不明发光物视频，目前缺乏官方核验，属于未经证实的网络讨论，别轻信外星人说法。
+    body_summary: 网上热传一段夜空三角形发光体盘旋的短视频，因为缺少明确拍摄坐标与权威机构证实，引发网友两极猜测：有人联想到不明飞行物（UFO），也有人指出大概率是无人机编队或大气光学折射。目前暂无任何可靠证据，先留在待定池观望。
+    self_risk_flags: ["unverified_source"]

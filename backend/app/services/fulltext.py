@@ -106,14 +106,14 @@ def extract_full_text(item_id: int) -> None:
             session.commit()
             return
 
-        html_text = _decode(outcome.content or b"")
+        html_text = _decode(outcome.content or b"").replace("\x00", "")
         text = trafilatura.extract(
             html_text,
             favor_precision=True,
             include_comments=False,
             include_tables=False,
         )
-        text = (text or "").strip()
+        text = (text or "").replace("\x00", "").strip()
 
         if len(text) >= MIN_FULL_TEXT_CHARS:
             item.full_text_status = "ok"
@@ -125,7 +125,15 @@ def extract_full_text(item_id: int) -> None:
         session.commit()
     except Exception:
         session.rollback()
-        logger.exception("正文补全异常 item_id=%s（不计入源健康度）", item_id)
+        logger.exception("正文补全异常 item_id=%s（降级为 blocked 防队头卡死）", item_id)
+        try:
+            item = session.get(RawItem, item_id)
+            if item is not None and item.full_text_status == "pending":
+                item.full_text_status = "blocked"
+                item.full_text = _fallback_summary(item)
+                session.commit()
+        except Exception:
+            session.rollback()
     finally:
         session.close()
 

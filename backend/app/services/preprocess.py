@@ -38,6 +38,13 @@ from app.models.keyword import KeywordRule
 from app.models.pipeline import Article, RawItem
 from app.models.task import TaskRun
 from app.services import ai
+from app.services.dedup_freshness import (
+    assign_event_cluster,
+    check_freshness,
+    check_l1_duplicate,
+    make_title_fingerprint,
+)
+from app.services.policy import get_active_policy
 
 logger = logging.getLogger(__name__)
 
@@ -271,9 +278,10 @@ def stage_filter(
     *,
     source_level: str,
     rules: RuleSet,
+    publisher_name: str | None = None,
 ) -> FilterResult:
     """L1—L3 与排序分。**纯函数**：不查库、不做 IO，``rules`` 由外部传入。"""
-    cleaned = clean_title(title, None)
+    cleaned = clean_title(title, publisher_name)
     # scope 语义＝title_summary（05 §3：排除词一律扫标题 + 摘要，不扫正文）
     haystack = f"{cleaned} {summary}".strip() if summary else cleaned
 
@@ -358,16 +366,24 @@ other=以上都不属于
 未证实目击=目击报告或单一信源 / 灵异传闻=灵异超自然叙述 /
 娱乐化灵异=娱乐号综艺段子手包装的灵异内容 / 伪科学主张=有明确科学主张但无依据
 
+【事件实体、动作与时间（用于跨源去重与时效门禁）】
+- entities: 字符串数组，提取 1—3 个最核心的专有名词/实体（如 ["江门中微子实验", "JUNO"]、["2026 XX"]、["Neuralink"]、["UNSEEN通灵者之战"]）
+- event_action: 英文简短动词标签，如 discovery / flyby / release / experiment / clinical_trial / sighting / show_appearance
+- event_time: 若文中提到具体事件日期或预计飞掠日期，输出 "YYYY-MM-DD" 或 "YYYY-MM-DD HH:MM"，否则 null
+- is_future_event: 布尔值，若事件将在未来发生（例如小行星即将飞掠地球、实验计划近日公布）填 true，否则 false
+
 【confidence】0 到 1 的小数，表示你对 is_event 判定的把握。
 
 只输出 JSON object，字段固定为：
 {"is_event": true, "event_type": "bci_consciousness", "category": "clinical_breakthrough",
- "content_nature": "科研进展", "confidence": 0.86, "reason": "一句话理由"}
+ "content_nature": "科研进展", "confidence": 0.86, "reason": "一句话理由",
+ "entities": ["浙大团队", "脑机接口"], "event_action": "clinical_trial",
+ "event_time": null, "is_future_event": false}
 不是事件时：event_type 填 null，category 填六值之一。"""
 
 
 class AiJudgement(BaseModel):
-    """AI 输出 schema（05 §6.4）的严格校验：非法值一律视为失败 → pending。"""
+    """AI 输出 schema（05 §6.4 + 06 实体/时间抽取）的严格校验：非法值一律视为失败 → pending。"""
 
     is_event: bool
     event_type: str | None = None
@@ -375,6 +391,10 @@ class AiJudgement(BaseModel):
     content_nature: str | None = None
     confidence: float
     reason: str = ""
+    entities: list[str] = []
+    event_action: str | None = None
+    event_time: str | None = None
+    is_future_event: bool = False
 
 
 @dataclass
@@ -387,6 +407,9 @@ class JudgeResult:
     status: str
     reject_reason: str | None
     priority: int
+    entities: list[str] = field(default_factory=list)
+    event_action: str | None = None
+    is_future_event: bool = False
     # 以下是给 run_preprocess_batch 写 ai_run 用的旁路信息，不参与判定
     event_time: datetime | None = None
     ai_status: str = "success"
@@ -444,7 +467,12 @@ def _parse_event_time(value: object) -> datetime | None:
 
 
 def judge_from_data(
-    data: dict, *, filter_result: FilterResult, source_level: str
+    data: dict,
+    *,
+    filter_result: FilterResult,
+    source_level: str,
+    event_confidence_min: float | None = None,
+    not_event_confidence_min: float | None = None,
 ) -> JudgeResult:
     """落点判定表（05 §6.5 的 6 行，逐条实现）。**纯函数**，单测直接调它。"""
     try:
@@ -503,9 +531,47 @@ def judge_from_data(
 
     confidence = max(0.0, min(1.0, float(parsed.confidence)))
     category = (parsed.category or "").strip().lower()
+    entities = [str(e).strip()[:64] for e in (parsed.entities or []) if str(e).strip()][:5]
+    event_action = (parsed.event_action or "").strip()[:64] or None
+    event_time = _parse_event_time(parsed.event_time or data.get("event_time"))
+    is_future = bool(parsed.is_future_event)
+
+    # ---- off_topic 拦截：event_type='other' 绝不放行进 candidate（防止跑偏源污染）----
+    if parsed.is_event and event_type == "other":
+        if not filter_result.signals:
+            return JudgeResult(
+                is_event=True,
+                event_type="other",
+                content_nature=nature,
+                confidence=confidence,
+                risk_flags=[],
+                status="rule_rejected",
+                reject_reason="off_topic:other",
+                priority=filter_result.priority,
+                entities=entities,
+                event_action=event_action,
+                is_future_event=is_future,
+                event_time=event_time,
+                output=data,
+            )
+        return JudgeResult(
+            is_event=True,
+            event_type="other",
+            content_nature=nature,
+            confidence=confidence,
+            risk_flags=["off_topic_borderline"],
+            status="pending",
+            reject_reason=None,
+            priority=filter_result.priority - 10,
+            entities=entities,
+            event_action=event_action,
+            is_future_event=is_future,
+            event_time=event_time,
+            output=data,
+        )
 
     # ---- 第 3 行：灵异四类 → pending + risk_flags=['supernatural'] ----
-    if parsed.is_event and nature in SUPERNATURAL_NATURES:
+    if parsed.is_event and (nature in SUPERNATURAL_NATURES or event_type == "anomaly_psychic"):
         return JudgeResult(
             is_event=True,
             event_type=event_type,
@@ -515,16 +581,22 @@ def judge_from_data(
             status="pending",
             reject_reason=None,
             priority=filter_result.priority - SUPERNATURAL_PENALTY,
-            event_time=_parse_event_time(data.get("event_time")),
+            entities=entities,
+            event_action=event_action,
+            is_future_event=is_future,
+            event_time=event_time,
             output=data,
         )
+
+    ev_min = float(event_confidence_min if event_confidence_min is not None else settings.EVENT_CONFIDENCE_MIN)
+    not_ev_min = float(not_event_confidence_min if not_event_confidence_min is not None else settings.NOT_EVENT_CONFIDENCE_MIN)
 
     if parsed.is_event:
         # ---- 第 2 行：C 级源 → pending（C 不是丢弃，是进待定池）----
         if source_level == "C":
             status = "pending"
         # ---- 第 4 行：置信度不足 → pending ----
-        elif confidence < settings.EVENT_CONFIDENCE_MIN:
+        elif confidence < ev_min:
             status = "pending"
         # ---- 第 1 行：A/B 级 + 高置信 + 非灵异 → candidate ----
         elif source_level in ("A", "B") and nature in ("科学事实", "科研进展"):
@@ -541,12 +613,15 @@ def judge_from_data(
             status=status,
             reject_reason=None,
             priority=filter_result.priority,
-            event_time=_parse_event_time(data.get("event_time")),
+            entities=entities,
+            event_action=event_action,
+            is_future_event=is_future,
+            event_time=event_time,
             output=data,
         )
 
     # ---- 第 5 行：判非事件且高置信 → 拒 ----
-    if confidence >= settings.NOT_EVENT_CONFIDENCE_MIN:
+    if confidence >= not_ev_min:
         reason_category = category if category in NOT_EVENT_CATEGORIES else "other"
         return JudgeResult(
             is_event=False,
@@ -581,6 +656,9 @@ def stage_judge(
     publisher_name: str | None,
     source_level: str,
     filter_result: FilterResult,
+    replay_key: str | None = None,
+    event_confidence_min: float | None = None,
+    not_event_confidence_min: float | None = None,
 ) -> JudgeResult:
     """L4/L5：调 AI 拿结构化结果，再按落点表定 status。**不碰数据库**。"""
     payload = _build_payload(
@@ -593,7 +671,9 @@ def stage_judge(
     hash_value = ai.input_hash(
         payload, model=settings.LLM_MODEL_CLASSIFY, prompt_version=settings.PROMPT_VERSION
     )
-    result = ai.classify(payload, prompt_version=settings.PROMPT_VERSION)
+    result = ai.classify(
+        payload, prompt_version=settings.PROMPT_VERSION, replay_key=replay_key
+    )
 
     if result.status != "success" or not result.data:
         # AI 失败 / 跳过 / 空 dict → pending + is_event=NULL（绝不默认拒，05 §6.5 第 6 行）
@@ -614,11 +694,18 @@ def stage_judge(
             output={},
         )
 
-    judged = judge_from_data(result.data, filter_result=filter_result, source_level=source_level)
+    judged = judge_from_data(
+        result.data,
+        filter_result=filter_result,
+        source_level=source_level,
+        event_confidence_min=event_confidence_min,
+        not_event_confidence_min=not_event_confidence_min,
+    )
     judged.tokens = result.tokens
     judged.latency_ms = result.latency_ms
     judged.input_hash = hash_value
-    judged.ai_error = result.error
+    # 修复：保留 judge_from_data 产出的 schema/枚举报错，不被 result.error(None) 覆盖
+    judged.ai_error = judged.ai_error or result.error
     if judged.ai_status == "success" and result.status != "success":
         judged.ai_status = result.status
     return judged
@@ -659,21 +746,32 @@ def _write_judgement(article: Article, judged: JudgeResult) -> None:
     article.review_priority = judged.priority
     article.risk_flags = list(judged.risk_flags)
     article.event_confidence = judged.confidence
+    if judged.entities:
+        article.entities = list(judged.entities)
+    if judged.event_action:
+        article.event_action = judged.event_action
+    if judged.is_future_event:
+        article.is_future_event = True
     if judged.event_time is not None:
         article.event_time = judged.event_time
 
 
 def run_preprocess_batch(limit: int | None = None) -> dict:
-    """跑一批（默认 ``PREPROCESS_BATCH_SIZE`` 条）。返回 stats dict。
+    """跑一批预处理 + 06 两级去重与时效门禁。返回 stats dict。
 
-    单条异常不中断整批；**DB 写入全部在主线程串行**，AI 调用可并发。
+    链路：
+    L1 清洗 → L2 硬排除 → L1 即时去重（零 LLM 成本）→ L4/L5 AI 判定 + 实体/时间抽取
+    → L2 跨源事件簇合并 → 48h/未来事件时效门禁 → 通过者置 ``status='judged'`` 等待 07 AI 文案加工。
     """
     batch = int(limit if limit is not None else settings.PREPROCESS_BATCH_SIZE)
     stats = {
         "scanned": 0,
         "cleaned": 0,
         "rule_rejected": 0,
+        "duplicate": 0,
+        "expired": 0,
         "not_event": 0,
+        "judged": 0,
         "candidate": 0,
         "pending": 0,
         "ai_called": 0,
@@ -703,34 +801,40 @@ def run_preprocess_batch(limit: int | None = None) -> dict:
         return stats
 
     try:
+        policy = get_active_policy(session)
+        pt = policy.thresholds
         rules = load_rules(session)
         rows = _fetch_batch(session, batch)
+        now = datetime.now(timezone.utc)
         logger.info(
-            "预处理开始 task_run=%s 本批 %s 条（硬排除 %s 组 / 软扣分 %s 组 / 锚定 %s 组）",
+            "预处理开始 task_run=%s profile=%s 本批 %s 条（硬排除 %s 组 / 软扣分 %s 组 / 锚定 %s 组）",
             run_id,
+            policy.profile,
             len(rows),
             len(rules.hard),
             len(rules.soft),
             len(rules.anchors),
         )
 
-        # —— 阶段 A（主线程）：L1 清洗 + L2/L3 过滤 ——
-        # candidates = (article, 送给 stage_judge 的纯值参数, FilterResult)
-        candidates: list[tuple[Article, dict, FilterResult]] = []
+        # —— 阶段 A（主线程）：L1 清洗 + L2/L3 过滤 + 06 L1 即时去重 ——
+        candidates: list[tuple[Article, RawItem, dict, FilterResult]] = []
         for article, raw in rows:
             try:
                 original = article.title
                 publisher = raw.publisher_name or article.publisher_name
                 summary = raw.raw_summary or article.summary
-                pre_cleaned = clean_title(article.title, publisher)
                 filter_result = stage_filter(
-                    pre_cleaned,
+                    article.title,
                     summary,
                     source_level=article.source_level,
                     rules=rules,
+                    publisher_name=publisher,
                 )
                 stats["scanned"] += 1
                 article.title = filter_result.cleaned_title
+                article.title_fingerprint = make_title_fingerprint(filter_result.cleaned_title)
+                if article.first_seen_at is None:
+                    article.first_seen_at = raw.fetched_at or now
                 if filter_result.cleaned_title != original:
                     stats["cleaned"] += 1
 
@@ -743,16 +847,25 @@ def run_preprocess_batch(limit: int | None = None) -> dict:
                     session.commit()
                     continue
 
-                # ★ 06 即时去重的插入点 ★
-                # 05 §2 / §9：硬排除之后、AI 判定之前先置 processing，
-                # 06 的去重逻辑就插在这一步与 stage_judge 之间
-                # （同一 event_cluster 内已有时效窗口内的条目 → status='duplicate'，不花 AI 的钱）。
-                # 本期 06 未落地，这里只落到 processing 就继续判定。
+                # 06 L1 即时去重（AI 之前执行，直接省掉重复新闻的 LLM 调用）
+                l1_dup = check_l1_duplicate(
+                    session, article, now=now, trgm_threshold=pt.dedup_trgm_threshold
+                )
+                if l1_dup.is_duplicate:
+                    article.status = "duplicate"
+                    article.event_cluster_id = l1_dup.cluster_id
+                    article.reject_reason = l1_dup.reason
+                    article.review_priority = filter_result.priority
+                    stats["duplicate"] += 1
+                    session.commit()
+                    continue
+
                 article.status = "processing"
                 session.commit()
                 candidates.append(
                     (
                         article,
+                        raw,
                         {
                             "title": filter_result.cleaned_title,
                             "summary": summary,
@@ -767,23 +880,74 @@ def run_preprocess_batch(limit: int | None = None) -> dict:
                 session.rollback()
                 logger.exception("预处理单条失败 article_id=%s（已跳过）", article.id)
 
-        # —— 阶段 B：AI 并发调用（线程里只有纯值，不碰 ORM、不碰数据库）——
+        # —— 阶段 B：缓存预查 + 日预算熔断 + AI 并发调用（线程不碰 ORM）——
         if candidates:
             judged_by_id: dict[int, JudgeResult] = {}
-            workers = max(1, int(settings.PREPROCESS_CONCURRENCY))
-            with ThreadPoolExecutor(max_workers=workers) as pool:
-                futures = {
-                    article.id: pool.submit(stage_judge, **judge_kwargs)
-                    for article, judge_kwargs, _filter_result in candidates
-                }
-                for article, _judge_kwargs, _filter_result in candidates:
-                    try:
-                        judged_by_id[article.id] = futures[article.id].result()
-                    except Exception:
-                        logger.exception("AI 判定线程异常 article_id=%s", article.id)
+            to_call: list[tuple[Article, dict, FilterResult]] = []
+            budget = int(settings.LLM_DAILY_TOKEN_BUDGET or 0)
+            used_tokens = ai.get_today_tokens(session) if budget > 0 else 0
+            # 单条分类调用保守预估配额，防止批量并发集体穿透日预算上限
+            est_per_call = 1000
+            reserved_tokens = 0
 
-            # —— 阶段 C（主线程）：落库串行 ——
-            for article, _judge_kwargs, _filter_result in candidates:
+            for article, _raw, judge_kwargs, filter_result in candidates:
+                payload = _build_payload(**judge_kwargs)
+                h = ai.input_hash(
+                    payload,
+                    model=settings.LLM_MODEL_CLASSIFY,
+                    prompt_version=settings.PROMPT_VERSION,
+                )
+                cached = ai.lookup_cached_result(session, h)
+                if cached is not None:
+                    j = judge_from_data(
+                        cached,
+                        filter_result=filter_result,
+                        source_level=article.source_level,
+                        event_confidence_min=pt.event_confidence_min,
+                        not_event_confidence_min=pt.not_event_confidence_min,
+                    )
+                    j.input_hash = h
+                    j.tokens = 0
+                    judged_by_id[article.id] = j
+                    continue
+                if budget > 0 and (used_tokens + reserved_tokens) >= budget:
+                    judged_by_id[article.id] = JudgeResult(
+                        is_event=None,
+                        event_type=None,
+                        content_nature=None,
+                        confidence=None,
+                        risk_flags=["budget_exceeded"],
+                        status="pending",
+                        reject_reason=None,
+                        priority=filter_result.priority,
+                        ai_status="skipped",
+                        ai_error=f"已达今日 Token 预算上限（{budget}）",
+                        input_hash=h,
+                    )
+                    continue
+                reserved_tokens += est_per_call
+                to_call.append((article, judge_kwargs, filter_result))
+
+            if to_call:
+                workers = max(1, int(settings.PREPROCESS_CONCURRENCY))
+                with ThreadPoolExecutor(max_workers=workers) as pool:
+                    futures = {
+                        article.id: pool.submit(
+                            stage_judge,
+                            **judge_kwargs,
+                            event_confidence_min=pt.event_confidence_min,
+                            not_event_confidence_min=pt.not_event_confidence_min,
+                        )
+                        for article, judge_kwargs, _fr in to_call
+                    }
+                    for article, _judge_kwargs, _fr in to_call:
+                        try:
+                            judged_by_id[article.id] = futures[article.id].result()
+                        except Exception:
+                            logger.exception("AI 判定线程异常 article_id=%s", article.id)
+
+            # —— 阶段 C（主线程）：落库 + 06 L2 事件簇去重 + 时效门禁 ——
+            for article, raw, _judge_kwargs, _filter_result in candidates:
                 judged = judged_by_id.get(article.id)
                 if judged is None:
                     continue
@@ -793,12 +957,44 @@ def run_preprocess_batch(limit: int | None = None) -> dict:
                     stats["tokens"] += judged.tokens
                     if judged.ai_status != "success":
                         stats["ai_failed"] += 1
-                    if judged.status == "candidate":
-                        stats["candidate"] += 1
+
+                    # 有效事件（is_event=True 且未被 rule_rejected）：走 L2 事件簇去重 + 时效门禁 → judged
+                    if judged.is_event is True and judged.status != "rule_rejected":
+                        l2_dup = assign_event_cluster(session, article, raw, now=now)
+                        if l2_dup.is_duplicate:
+                            article.status = "duplicate"
+                            article.reject_reason = l2_dup.reason
+                            stats["duplicate"] += 1
+                        else:
+                            fresh = check_freshness(
+                                publish_time=raw.published_at,
+                                event_time=article.event_time,
+                                first_seen_at=article.first_seen_at,
+                                is_future_event=article.is_future_event,
+                                now=now,
+                                freshness_hours=pt.freshness_hours,
+                            )
+                            if fresh.risk_flags:
+                                merged = list(article.risk_flags or [])
+                                for flag in fresh.risk_flags:
+                                    if flag not in merged:
+                                        merged.append(flag)
+                                article.risk_flags = merged
+                            if fresh.expired:
+                                article.status = "expired"
+                                article.reject_reason = fresh.reject_reason
+                                stats["expired"] += 1
+                            else:
+                                # 全部前置闸门通过，置 judged 等待 07 AI 文案加工
+                                article.status = "judged"
+                                stats["judged"] += 1
                     elif judged.status == "rule_rejected":
                         stats["not_event"] += 1
                     else:
+                        # AI 失败/跳过/低置信不确定 → pending（不送文案加工，待人工或重跑）
+                        article.status = "pending"
                         stats["pending"] += 1
+
                     session.add(
                         AiRun(
                             article_id=article.id,
@@ -825,14 +1021,16 @@ def run_preprocess_batch(limit: int | None = None) -> dict:
 
     _close_task_run(run_id, stats)
     logger.info(
-        "预处理完成 task_run=%s scanned=%s cleaned=%s rule_rejected=%s "
-        "not_event=%s candidate=%s pending=%s ai_called=%s ai_failed=%s tokens=%s",
+        "预处理完成 task_run=%s scanned=%s cleaned=%s rule_rejected=%s duplicate=%s "
+        "expired=%s not_event=%s judged=%s pending=%s ai_called=%s ai_failed=%s tokens=%s",
         run_id,
         stats["scanned"],
         stats["cleaned"],
         stats["rule_rejected"],
+        stats["duplicate"],
+        stats["expired"],
         stats["not_event"],
-        stats["candidate"],
+        stats["judged"],
         stats["pending"],
         stats["ai_called"],
         stats["ai_failed"],

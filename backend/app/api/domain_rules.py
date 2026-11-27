@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import current_admin, write_review_action
+from app.api.deps import current_admin, require_admin, write_review_action
 from app.core.db import get_db
 from app.core.errors import (
     DOMAIN_EXISTS,
@@ -34,7 +34,11 @@ from app.services.domain import is_valid_registrable_domain, registrable_domain
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/source-domain-rules", tags=["domain-rules"])
+router = APIRouter(
+    prefix="/api/source-domain-rules",
+    tags=["domain-rules"],
+    dependencies=[Depends(require_admin)],
+)
 
 ACTION_CREATE_RULE = "create_domain_rule"
 ACTION_UPDATE_RULE = "update_domain_rule"
@@ -93,6 +97,40 @@ def list_unknown_domains(
         page=page,
         page_size=page_size,
     )
+
+
+@router.delete("/unknown/{domain}", status_code=204, response_class=Response)
+def delete_unknown_domain(
+    domain: str,
+    db: Session = Depends(get_db),
+    admin: str = current_admin,
+) -> Response:
+    normalized = (domain or "").strip().lower()
+    row = db.execute(
+        select(UnknownDomain).where(UnknownDomain.domain == normalized)
+    ).scalar_one_or_none()
+    if row is None:
+        raise AppError(
+            "UNKNOWN_DOMAIN_NOT_FOUND",
+            f"未收录域名 {domain} 不存在",
+            status_code=404,
+            detail={"domain": domain},
+        )
+    before = {
+        "domain": row.domain,
+        "hit_count": row.hit_count,
+        "sample_title": row.sample_title,
+    }
+    write_review_action(
+        db,
+        reviewer=admin,
+        action="delete_unknown_domain",
+        before=before,
+        note="运营忽略并清理未收录域名",
+    )
+    db.delete(row)
+    db.commit()
+    return Response(status_code=204)
 
 
 # --------------------------------------------------------------------------- #

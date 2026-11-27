@@ -20,8 +20,9 @@ from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy import Integer, case, cast, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import current_admin, write_review_action
+from app.api.deps import current_admin, require_admin, write_review_action
 from app.core.db import get_db
+from app.core.secrets import encrypt_secret, mask_secret
 from app.core.errors import (
     INVALID_TYPE_FIELD,
     MISSING_EXPECTED_DOMAINS,
@@ -63,10 +64,15 @@ from app.schemas.source import (
 )
 from app.services import validate as validate_service
 from app.services.adapters import build_google_news_url
+from app.services.fetch import check_safe_outbound_url
 from app.services.health import STATUS_SEVERITY, thresholds
 from app.services.validate import probe_many
 
-router = APIRouter(prefix="/api/sources", tags=["sources"])
+router = APIRouter(
+    prefix="/api/sources",
+    tags=["sources"],
+    dependencies=[Depends(require_admin)],
+)
 
 # 03 §7.1：这四类状态需要人处理
 NEEDS_ATTENTION_STATUSES: tuple[str, ...] = ("down", "auth_error", "degraded", "starved")
@@ -103,6 +109,7 @@ SOURCE_FIELDS: tuple[str, ...] = (
     "title_suffix_rules",
     "extra_headers",
     "api_key_env",
+    "api_key_mask",
     "note",
     "last_validated_at",
     "etag",
@@ -176,6 +183,15 @@ def _validate_type_fields(
             status_code=400,
             detail={"field": "query_template"},
         )
+    if (url or "").strip():
+        unsafe = check_safe_outbound_url(str(url))
+        if unsafe is not None:
+            raise AppError(
+                INVALID_TYPE_FIELD,
+                f"信源 URL 安全校验未通过：{unsafe}",
+                status_code=400,
+                detail={"field": "url"},
+            )
     if source_type == "google_news" and not (url or "").strip() and not (
         query_template or ""
     ).strip():
@@ -277,6 +293,9 @@ def _build_stats(source: Source, stats: dict[str, Any], p95: int | None) -> Sour
 
 def _to_list_item(source: Source, stats: dict[str, Any]) -> SourceListItem:
     item = SourceListItem.model_validate(source)
+    item.key_configured = bool(source.api_key_encrypted) or (
+        bool(source.api_key_env) and bool(os.environ.get(source.api_key_env or ""))
+    )
     item.success_rate_7d = stats.get("success_rate_7d")
     item.avg_duration_ms_7d = stats.get("avg_duration_ms_7d")
     item.items_7d = int(stats.get("items_7d") or 0)
@@ -288,8 +307,8 @@ def _to_detail(
     source: Source, stats: dict[str, Any], p95: int | None = None
 ) -> SourceDetail:
     data: dict[str, Any] = {name: getattr(source, name, None) for name in SOURCE_FIELDS}
-    data["key_configured"] = bool(source.api_key_env) and bool(
-        os.environ.get(source.api_key_env or "")
+    data["key_configured"] = bool(source.api_key_encrypted) or (
+        bool(source.api_key_env) and bool(os.environ.get(source.api_key_env or ""))
     )
     data["etag_cached"] = bool(source.etag or source.last_modified)
     data["thresholds"] = SourceThresholds(**thresholds())
@@ -510,6 +529,15 @@ def validate_one(
     admin: str = current_admin,
 ) -> ValidateResult:
     source_type = _as_value(payload.source_type)
+    if (payload.url or "").strip():
+        unsafe = check_safe_outbound_url(str(payload.url))
+        if unsafe is not None:
+            raise AppError(
+                INVALID_TYPE_FIELD,
+                f"探活 URL 安全校验未通过：{unsafe}",
+                status_code=400,
+                detail={"field": "url"},
+            )
     raw = validate_service.probe_source(
         source_type=source_type,
         url=payload.url,
@@ -618,7 +646,9 @@ def create_source(
         expected_domains=list(payload.expected_domains or []),
         title_suffix_rules=list(payload.title_suffix_rules or []),
         extra_headers=dict(payload.extra_headers or {}),
-        api_key_env=payload.api_key_env,
+        api_key_env=(payload.api_key_env or "").strip() or None,
+        api_key_encrypted=encrypt_secret(payload.api_key),
+        api_key_mask=mask_secret(payload.api_key),
         note=payload.note,
         # 新建不探活：last_validated_at 保持 null（03 §8.4 S6）
         last_validated_at=None,
@@ -803,6 +833,8 @@ def update_source(
         changes["url"] = build_google_news_url(str(merged_query))
 
     before = _snapshot(source)
+    raw_api_key = changes.pop("api_key", None)
+    clear_api_key = bool(changes.pop("clear_api_key", False))
     for key, value in changes.items():
         if key == "expected_domains":
             value = list(value or [])
@@ -810,9 +842,17 @@ def update_source(
             value = list(value or [])
         elif key == "extra_headers":
             value = dict(value or {})
-        elif key in ("url", "query_template") and isinstance(value, str):
+        elif key in ("url", "query_template", "api_key_env") and isinstance(value, str):
             value = value.strip() or None
         setattr(source, key, value)
+
+    if clear_api_key:
+        source.api_key_encrypted = None
+        source.api_key_mask = None
+    elif raw_api_key and str(raw_api_key).strip():
+        cleaned_key = str(raw_api_key).strip()
+        source.api_key_encrypted = encrypt_secret(cleaned_key)
+        source.api_key_mask = mask_secret(cleaned_key)
 
     if changes.get("enabled") is False and source.health_status != "disabled":
         # 通过 PATCH 停用与 toggle 语义一致（03 §8.4 S8）

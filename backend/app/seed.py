@@ -31,7 +31,16 @@ from sqlalchemy.orm import Session
 
 from app.core.config import REPO_ROOT
 from app.core.db import SessionLocal, engine
-from app.models import KeywordRule, Source, SourceDomainRule
+from app.models import (
+    Article,
+    EventCluster,
+    KeywordRule,
+    PublishedArticle,
+    PushRecord,
+    RawItem,
+    Source,
+    SourceDomainRule,
+)
 
 # fixtures 在仓库根，不在 backend/ 里（REPO_ROOT 已指向仓库根）
 FIXTURES_DIR: Path = REPO_ROOT / "fixtures"
@@ -50,6 +59,10 @@ REQUIRED_TABLES = (
     "review_action",
     "keyword_rule",
     "ai_run",
+    "event_cluster",
+    "published_article",
+    "push_record",
+    "risk_policy_config",
 )
 
 # 已存在时允许「补缺失」的字段（enabled / poll_interval_min 明确不在其中）
@@ -337,6 +350,174 @@ def hash_password(raw: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+def seed_demo_articles(session: Session) -> int:
+    """将 fixtures/eval/acceptance_10.yaml 的 10 条验收样例幂等灌库，用于离线演示与审核台体验。"""
+    from datetime import timedelta
+
+    from app.services.collector import sha256
+    from app.services.dedup_freshness import make_title_fingerprint
+    from app.services.verifier import default_disclaimer_for
+
+    demo_path = FIXTURES_DIR / "eval" / "acceptance_10.yaml"
+    if not demo_path.is_file():
+        return 0
+    cases = yaml.safe_load(demo_path.read_text(encoding="utf-8")) or []
+    manual_src = session.execute(select(Source).where(Source.code == "manual")).scalar_one_or_none()
+    if manual_src is None:
+        return 0
+
+    now = datetime.now(timezone.utc)
+    inserted = 0
+    for idx, case in enumerate(cases):
+        url = case["url"]
+        url_hash = sha256(url)
+        exists = session.execute(
+            select(RawItem).where(RawItem.source_id == manual_src.id, RawItem.url_hash == url_hash)
+        ).scalar_one_or_none()
+        if exists is not None:
+            continue
+
+        pub_time = now - timedelta(hours=idx + 1)
+        raw = RawItem(
+            source_id=manual_src.id,
+            url=url,
+            resolved_url=url,
+            publisher_url=url,
+            publisher_name=case.get("publisher_name"),
+            raw_title=case["title"],
+            raw_summary=case.get("summary"),
+            full_text=case.get("summary"),
+            full_text_status="ok",
+            published_at=pub_time,
+            fetched_at=now,
+            extra={"demo_case_id": case["id"]},
+            url_hash=url_hash,
+        )
+        session.add(raw)
+        session.flush()
+
+        judge = case.get("judge_replay") or {}
+        gen = case.get("generate_replay") or {}
+        cands = gen.get("title_candidates") or []
+        best = cands[0] if cands else {}
+        status = case["expect_status"]
+        ev_type = case.get("expect_event_type") or judge.get("event_type")
+        nature = judge.get("content_nature")
+        risk_flags: list[str] = []
+        if ev_type == "anomaly_psychic" or nature in ("未证实目击", "灵异传闻", "娱乐化灵异", "伪科学主张"):
+            risk_flags.append("supernatural")
+        if case["source_level"] == "C":
+            risk_flags.append("c_level_source")
+
+        cluster_id = None
+        if status in ("candidate", "pending") and ev_type:
+            cluster = EventCluster(
+                event_type=ev_type,
+                primary_entity=(judge.get("entities") or [case["name"]])[0][:128],
+                event_action=judge.get("event_action") or "release",
+                event_date=pub_time.date(),
+                canonical_title=case["title"],
+                first_seen_at=now,
+                article_count=1,
+                is_published=False,
+            )
+            session.add(cluster)
+            session.flush()
+            cluster_id = cluster.id
+
+        article = Article(
+            raw_item_id=raw.id,
+            title=case["title"],
+            summary=case.get("summary"),
+            publisher_name=case.get("publisher_name"),
+            publisher_url=url,
+            original_url=url,
+            canonical_url=url,
+            source_level=case["source_level"],
+            source_level_reason=f"demo:{case['source_level']}",
+            resolve_status="resolved",
+            url_hash=url_hash,
+            content_hash=sha256(case["title"] + "|" + (case.get("summary") or "")),
+            title_fingerprint=make_title_fingerprint(case["title"]),
+            first_seen_at=now,
+            is_future_event=bool(case.get("is_future_event", False)),
+            event_cluster_id=cluster_id,
+            entities=list(judge.get("entities") or []),
+            event_action=judge.get("event_action"),
+            is_event=judge.get("is_event") if judge else False,
+            event_type=ev_type,
+            content_nature=nature,
+            event_confidence=judge.get("confidence"),
+            risk_flags=risk_flags,
+            review_priority={"A": 45, "B": 30, "C": 10}.get(case["source_level"], 10),
+            fact_anchor=gen.get("fact_anchor"),
+            title_candidates=[
+                {**c, "passed_check": True, "check_errors": []} for c in cands
+            ],
+            title_final=best.get("title"),
+            body_lead=gen.get("body_lead"),
+            body_summary=gen.get("body_summary"),
+            hook_score=best.get("hook_score"),
+            style_tag=best.get("style_tag"),
+            need_review=True,
+            ai_generated_at=now if gen else None,
+            status=status,
+            reject_reason=case.get("expect_reject_prefix"),
+        )
+        session.add(article)
+        session.flush()
+
+        if cluster_id:
+            cluster_obj = session.get(EventCluster, cluster_id)
+            if cluster_obj:
+                cluster_obj.lead_article_id = article.id
+
+        # 默认把首条“江门中微子”样例额外发布一条快照到栏目页，打开 /column 即有真实效果
+        if case["id"] == "case01_neutrino_result":
+            article.status = "published"
+            pub = PublishedArticle(
+                article_id=article.id,
+                event_cluster_id=cluster_id,
+                version=1,
+                title_final=article.title_final or article.title,
+                body_lead=article.body_lead or "",
+                body_summary=article.body_summary or "",
+                event_type=ev_type or "deep_space_particle",
+                source_name=article.publisher_name or "官方来源",
+                source_url=url,
+                source_level=article.source_level,
+                content_nature=nature,
+                disclaimer=default_disclaimer_for(ev_type, nature),
+                style_tag=article.style_tag,
+                hook_score=article.hook_score,
+                is_active=True,
+                published_at=now,
+                operator="seed-demo",
+            )
+            session.add(pub)
+            session.flush()
+            session.add(
+                PushRecord(
+                    published_article_id=pub.id,
+                    action="publish",
+                    channel="internal_column",
+                    payload_json={"demo": True, "title_final": pub.title_final},
+                    status="success",
+                    operator="seed-demo",
+                )
+            )
+            if cluster_id:
+                cluster_obj = session.get(EventCluster, cluster_id)
+                if cluster_obj:
+                    cluster_obj.is_published = True
+                    cluster_obj.published_at = now
+
+        inserted += 1
+
+    session.commit()
+    return inserted
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m app.seed",
@@ -346,6 +527,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--verify",
         action="store_true",
         help="灌种子后逐源探活，与 expected_status_on_first_run 对账",
+    )
+    parser.add_argument(
+        "--demo",
+        action="store_true",
+        help="同时灌入 10 条需求验收演示样例（含 1 条已发布栏目快照）",
     )
     parser.add_argument(
         "--hash-password",
@@ -367,9 +553,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         rule_count = (
             session.scalar(select(func.count()).select_from(SourceDomainRule)) or 0
         )
+        demo_inserted = seed_demo_articles(session) if args.demo else 0
 
     print(f"seeded {source_count} sources, {rule_count} domain rules")
     print(f"keyword rules: {keyword_count}")
+    if args.demo:
+        print(f"demo acceptance articles inserted: {demo_inserted}")
 
     if not args.verify:
         return 0

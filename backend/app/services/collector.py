@@ -16,6 +16,7 @@ from app.models.pipeline import Article, RawItem
 from app.models.source import Source, SourceDomainRule, UnknownDomain
 from app.models.task import TaskRun
 from app.services.adapters import clean_text, get_adapter
+from app.services.dedup_freshness import make_title_fingerprint
 from app.services.domain import registrable_domain
 from app.services.dto import FetchResult, RawItemDraft, SourceConfig
 from app.services.grading import grade_article_source
@@ -194,10 +195,11 @@ def persist_items(
         session.flush()
 
         canonical = canonicalize(draft.resolved_url) if draft.resolved_url else None
+        cleaned_title = clean_text(draft.title) or draft.title
         session.add(
             Article(
                 raw_item_id=raw.id,
-                title=clean_text(draft.title) or draft.title,
+                title=cleaned_title,
                 summary=draft.summary,
                 publisher_name=raw.publisher_name,
                 publisher_url=draft.publisher_url,
@@ -212,7 +214,9 @@ def persist_items(
                     + "|"
                     + normalize_for_hash(draft.summary)
                 ),
-                title_fingerprint=normalize_for_hash(draft.title),
+                title_fingerprint=make_title_fingerprint(cleaned_title),
+                first_seen_at=draft.fetched_at or now,
+                is_future_event=bool((draft.extra or {}).get("is_future_event", False)),
                 dup_sources=[],
                 status="ingested",
             )
@@ -278,17 +282,20 @@ def execute_poll(session: Session, run: TaskRun, source: Source) -> None:
         persisted = persist_items(session, source, result, now=now)
         stats.update(persisted)
         run.status = "success"
-        # 条件请求凭证只在成功时更新
-        if result.not_modified:
-            apply_poll_result(
-                session, source, ok=True, error_kind=None, error=None,
-                fetched=int(stats.get("fetched") or 0), now=now,
-            )
-        else:
-            apply_poll_result(
-                session, source, ok=True, error_kind=None, error=None,
-                fetched=int(stats.get("fetched") or 0), now=now,
-            )
+        # 条件请求凭证只在成功时更新（修复原本 ETag/Last-Modified 未落库的缺陷）
+        if result.etag:
+            source.etag = result.etag[:256]
+        if result.last_modified:
+            source.last_modified = result.last_modified[:128]
+        apply_poll_result(
+            session,
+            source,
+            ok=True,
+            error_kind=None,
+            error=None,
+            fetched=int(stats.get("fetched") or 0),
+            now=now,
+        )
 
     run.stats_json = stats
     run.finished_at = datetime.now(timezone.utc)
@@ -297,6 +304,7 @@ def execute_poll(session: Session, run: TaskRun, source: Source) -> None:
 def poll_source(source_id: int, triggered_by: str = "scheduler") -> int | None:
     """Worker 入口：自带 session，建 run → 执行 → 收口。"""
     session = SessionLocal()
+    run_id: int | None = None
     try:
         source = session.get(Source, source_id)
         if source is None or not source.enabled:
@@ -314,17 +322,29 @@ def poll_source(source_id: int, triggered_by: str = "scheduler") -> int | None:
             source_id=source_id,
             status="running",
             triggered_by=triggered_by,
+            started_at=datetime.now(timezone.utc),
         )
         session.add(run)
         session.commit()
-        run = session.get(TaskRun, run.id)
+        run_id = run.id
+        run = session.get(TaskRun, run_id)
         source = session.get(Source, source_id)
         execute_poll(session, run, source)
         session.commit()
         return run.id
-    except Exception:  # 本地错误不计入源健康度（04 §13.1）
+    except Exception as exc:  # 本地错误不计入源健康度（04 §13.1），但必须收口 task_run 防僵尸锁死
         session.rollback()
         logger.exception("poll_source 失败 source_id=%s", source_id)
+        if run_id is not None:
+            try:
+                failed_run = session.get(TaskRun, run_id)
+                if failed_run is not None and failed_run.status == "running":
+                    failed_run.status = "failed"
+                    failed_run.error = f"{type(exc).__name__}: {exc}"[:2000]
+                    failed_run.finished_at = datetime.now(timezone.utc)
+                    session.commit()
+            except Exception:
+                session.rollback()
         return None
     finally:
         session.close()
@@ -382,8 +402,9 @@ def find_pending_runs(session: Session) -> list[int]:
 
 
 def reclaim_stale_runs(session: Session, older_than_minutes: int = 30) -> int:
-    """Worker 启动清理：卡在 running 的任务会让该源永久不再被调度（04 §6）。"""
-    cutoff = datetime.now(timezone.utc) - timedelta(minutes=older_than_minutes)
+    """Worker 启动清理：回收卡在 running 的 task_run 以及卡在 processing 的 article。"""
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(minutes=older_than_minutes)
     rows = session.execute(
         select(TaskRun).where(
             TaskRun.status == "running",
@@ -394,7 +415,19 @@ def reclaim_stale_runs(session: Session, older_than_minutes: int = 30) -> int:
     for run in rows:
         run.status = "failed"
         run.error = "worker restarted"
-        run.finished_at = datetime.now(timezone.utc)
-    if rows:
+        run.finished_at = now
+
+    # 同时回收超过 15 分钟卡在 processing 僵尸态的文章，避免永久丢失
+    art_cutoff = now - timedelta(minutes=min(older_than_minutes, 15))
+    stale_articles = session.execute(
+        select(Article).where(
+            Article.status == "processing",
+            Article.updated_at < art_cutoff,
+        )
+    ).scalars().all()
+    for art in stale_articles:
+        art.status = "ingested"
+
+    if rows or stale_articles:
         session.commit()
-    return len(rows)
+    return len(rows) + len(stale_articles)
