@@ -79,6 +79,7 @@ def login(payload: LoginRequest, response: Response) -> LoginResponse:
         key=COOKIE_NAME,
         value=token,
         httponly=True,
+        secure=(settings.APP_ENV.lower() != "dev"),
         samesite="lax",
         max_age=settings.JWT_EXPIRE_MINUTES * 60,
         path="/",

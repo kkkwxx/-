@@ -51,6 +51,8 @@ class Source(Base, TimestampMixin):
         JSONB, nullable=False, default=dict
     )
     api_key_env: Mapped[str | None] = mapped_column(String(64))
+    api_key_encrypted: Mapped[str | None] = mapped_column(Text)
+    api_key_mask: Mapped[str | None] = mapped_column(String(64))
     note: Mapped[str | None] = mapped_column(Text)
 
     # ---- 人可写（探活时写）----

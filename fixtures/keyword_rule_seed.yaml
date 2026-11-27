@@ -21,15 +21,20 @@
 
 - type: exclude_hard
   category: entertain
-  pattern: '电影|电视剧|预告片|上映|票房|番剧|短剧|综艺'
-  note: 需求文档点名要排的影视类；本批未命中，保留
+  pattern: '电影|电视剧|预告片|上映|票房|番剧|短剧'
+  note: 需求文档点名要排的影视类；「综艺」已移入 exclude_soft，避免硬排除误杀「泰国灵异综艺中国道士参赛」
 
 - type: exclude_hard
   category: divination
-  pattern: '星座|运势|财运|桃花|今日运程|算命|风水|开光|转运|免费测算'
-  note: 需求文档点名要排的星座命理类；本批未命中，保留
+  pattern: '星座|运势|财运|桃花|今日运程|免费测算|十二星座|本周运势'
+  note: 需求文档点名要排的星座命理类；保留道士/术数事件不被误杀
 
 # ---------------- 软扣分（不拒绝，只降 review_priority，取最负一条不累加）----------------
+- type: exclude_soft
+  category: entertain
+  weight: -4
+  pattern: '综艺|真人秀|选秀|娱乐八卦'
+  note: 普通综艺软扣分；命中「灵异/通灵/道士」+事件动词可被白名单救回进入待定池
 - type: exclude_soft
   category: industry
   weight: -3
@@ -71,13 +76,13 @@
 
 - type: anchor
   category: anomaly_psychic
-  pattern: 'UFO|UAP|不明飞行物|灵异|通灵|超自然|paranormal|外星'
-  note: 异常 / 灵能
+  pattern: 'UFO|UAP|不明飞行物|灵异|通灵|道士|术数|超自然|paranormal|psychic|外星'
+  note: 异常 / 灵能（补齐道士/术数/psychic，确保泰国灵异综艺与通灵挑战可被白名单救回）
 
 # ---------------- 事件动词（白名单救回 + is_event 提示）----------------
 - type: event_verb
   category: verb
-  pattern: '发现|首次|率先|证实|确认|观测到|探测到|捕捉到|发射|着陆|撞击|飞掠|获批|批准|临床试验|手术|植入|受试者|患者|突破|刷新纪录|宣布|发表|启动试验|拍到'
+  pattern: '发现|首次|率先|证实|确认|观测到|探测到|捕捉到|发射|着陆|撞击|飞掠|获批|批准|临床试验|手术|植入|受试者|患者|突破|刷新纪录|宣布|发表|启动试验|拍到|参赛|播出|引发讨论|目击|测到'
   note: 命中它 + 锚定词 → 忽略全部软扣分
 
 # ---------------- 泛宇宙信号词（只加分，不作查询条件）----------------

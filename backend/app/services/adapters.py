@@ -117,9 +117,13 @@ class FeedAdapter:
             return base
         if outcome.not_modified:
             base.not_modified = True
+            base.etag = outcome.headers.get("etag") or etag
+            base.last_modified = outcome.headers.get("last-modified") or last_modified
             base.stats = {"fetched": 0, "not_modified": 1}
             return base
 
+        base.etag = outcome.headers.get("etag")
+        base.last_modified = outcome.headers.get("last-modified")
         text, strategy = _decode(outcome.content, outcome.headers.get("content-type"))
         parsed = feedparser.parse(text)
         entries = parsed.get("entries") or []
@@ -204,15 +208,124 @@ class FeedAdapter:
 
 
 class ApiAdapter:
-    """本期只留桩（决策 C3）：tianapi 需 key 且原地址 404，写了也无法验证。"""
+    """API 适配器：支持 NASA JPL CNEOS 小行星飞掠 API；其余未配置 Key 的 API 返回 auth。"""
 
-    def fetch(self, *, url: str, source_id: int, **_: Any) -> FetchResult:
+    # 1 AU ≈ 389.17 地月距离 (Lunar Distance)
+    _AU_TO_LD = 389.17
+
+    def fetch(
+        self,
+        *,
+        url: str,
+        source_id: int,
+        timeout: float | None = None,
+        max_attempts: int | None = None,
+        **_: Any,
+    ) -> FetchResult:
+        if "ssd-api.jpl.nasa.gov/cad.api" in (url or ""):
+            return self._fetch_jpl_cad(
+                url=url, source_id=source_id, timeout=timeout, max_attempts=max_attempts
+            )
         return FetchResult(
             items=[],
             error_kind="auth",
             error="ApiAdapter 本期未实现：该源需要 API Key（决策 C3）",
             stats={"reason": "api_adapter_not_implemented"},
         )
+
+    def _fetch_jpl_cad(
+        self,
+        *,
+        url: str,
+        source_id: int,
+        timeout: float | None = None,
+        max_attempts: int | None = None,
+    ) -> FetchResult:
+        import json
+        from urllib.parse import quote
+
+        outcome = fetch(url, timeout=timeout, max_attempts=max_attempts)
+        base = FetchResult(attempts=outcome.attempts, duration_ms=outcome.duration_ms)
+        if outcome.error_kind:
+            base.error_kind = outcome.error_kind
+            base.error = outcome.error
+            return base
+
+        try:
+            payload = json.loads(outcome.content.decode("utf-8", errors="replace"))
+        except ValueError as exc:
+            base.error_kind = "parse"
+            base.error = f"JPL CAD JSON 解析失败：{exc}"
+            return base
+
+        fields = payload.get("fields") or []
+        rows = payload.get("data") or []
+        base.stats = {"fetched": len(rows), "http_status": outcome.status_code, "api": "jpl_cad"}
+        if not rows:
+            base.error_kind = "empty_feed"
+            base.error = "JPL CAD 返回 0 条近地天体记录"
+            return base
+
+        idx = {name: i for i, name in enumerate(fields)}
+        now = datetime.now(timezone.utc)
+
+        for row in rows:
+            try:
+                des = str(row[idx["des"]]).strip()
+                cd = str(row[idx["cd"]]).strip()
+                dist_au = float(row[idx["dist"]])
+                v_rel = float(row[idx["v_rel"]]) if "v_rel" in idx and row[idx["v_rel"]] else None
+                h_mag = float(row[idx["h"]]) if "h" in idx and row[idx["h"]] else None
+            except (KeyError, IndexError, TypeError, ValueError):
+                continue
+
+            dist_ld = dist_au * self._AU_TO_LD
+            dist_km = dist_au * 149_597_870.7
+            # 用绝对星等 H 粗估直径（反照率 0.14 常规估算）
+            diam_text = ""
+            if h_mag is not None:
+                diam_m = int(round(1329.0 / (0.14 ** 0.5) * (10 ** (-0.2 * h_mag)) * 1000))
+                diam_text = f"，估算直径约 {diam_m} 米"
+
+            # 解析 cd（如 "2026-Nov-29 14:22"）作为 event_time 线索
+            cd_iso = cd
+            try:
+                cd_dt = date_parser.parse(cd).replace(tzinfo=timezone.utc)
+                cd_iso = cd_dt.strftime("%Y-%m-%d %H:%M UTC")
+            except (ValueError, OverflowError):
+                pass
+
+            lunar_note = "比月球还近！" if dist_ld < 1.0 else f"约 {dist_ld:.2f} 倍地月距离"
+            title = f"近地小行星 {des} 将于 {cd_iso[:10]} 近距离飞掠地球（{lunar_note}）"
+            speed_text = f"，相对速度约 {v_rel:.1f} 公里/秒" if v_rel is not None else ""
+            summary = (
+                f"NASA JPL 近地天体研究中心（CNEOS）监测显示，近地小行星 {des} 预计于 {cd_iso} "
+                f"近距离飞掠地球，最近距离约 {dist_ld:.2f} 倍地月距离（约 {dist_km / 10000:.1f} 万公里）"
+                f"{diam_text}{speed_text}。目前观测轨道表明无撞击地球威胁。"
+            )
+            detail_url = f"https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html#/?sstr={quote(des)}&cd={quote(cd[:11])}"
+            base.items.append(
+                RawItemDraft(
+                    source_id=source_id,
+                    url=detail_url,
+                    resolved_url=detail_url,
+                    publisher_url="https://cneos.jpl.nasa.gov",
+                    publisher_name="NASA JPL CNEOS",
+                    title=title,
+                    summary=summary,
+                    content_encoded=summary,
+                    published_at=now,
+                    published_raw=cd,
+                    fetched_at=now,
+                    extra={
+                        "jpl_des": des,
+                        "jpl_cd": cd_iso,
+                        "dist_ld": round(dist_ld, 3),
+                        "is_future_event": True,
+                    },
+                )
+            )
+        return base
 
 
 _ADAPTERS = {"rss": FeedAdapter(), "google_news": FeedAdapter(), "api": ApiAdapter()}

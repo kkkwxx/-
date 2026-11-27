@@ -33,13 +33,13 @@ def _username_from(payload: dict[str, Any]) -> str | None:
 
 
 def require_admin(request: Request) -> str:
-    """写操作依赖：校验 Cookie 里的 JWT，失败抛 401。"""
+    """写操作依赖：校验 Cookie 里的 JWT 且必须匹配单管理员用户名，失败抛 401。"""
     payload = _decode(request.cookies.get(COOKIE_NAME))
     if payload is None:
         raise AppError(UNAUTHORIZED, "未登录或登录已过期", status_code=401)
     username = _username_from(payload)
-    if not username:
-        raise AppError(UNAUTHORIZED, "令牌缺少用户名", status_code=401)
+    if not username or username != settings.ADMIN_USERNAME:
+        raise AppError(UNAUTHORIZED, "无效的管理员身份令牌", status_code=401)
     return username
 
 

@@ -19,7 +19,14 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.core.db import Base
 from app.models.base import TimestampMixin, utcnow
 
-TASK_TYPES = ("poll", "fetch_full_text", "recalc_levels", "preprocess")
+TASK_TYPES = (
+    "poll",
+    "fetch_full_text",
+    "recalc_levels",
+    "preprocess",
+    "generate_content",
+    "pipeline_run",
+)
 TASK_STATUSES = ("pending", "running", "success", "failed")
 TRIGGERED_BY = ("scheduler", "manual", "startup")
 
@@ -46,7 +53,7 @@ class TaskRun(Base, TimestampMixin):
 
     __table_args__ = (
         CheckConstraint(
-            "task_type IN ('poll','fetch_full_text','recalc_levels','preprocess')",
+            "task_type IN ('poll','fetch_full_text','recalc_levels','preprocess','generate_content','pipeline_run')",
             name="ck_task_type",
         ),
         CheckConstraint(

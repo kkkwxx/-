@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     ADMIN_PASSWORD_HASH: str = ""
     JWT_SECRET: str = "please-change-this-to-a-long-random-string"
     JWT_EXPIRE_MINUTES: int = 720
-    CORS_ORIGINS: str = "http://localhost:5173"
+    CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     # ---- 采集（技术栈 §5.5） ----
     CRAWL_USER_AGENT: str = "MysteryNewsDemo/1.0 (+mailto:contact@example.com)"
@@ -58,10 +58,10 @@ class Settings(BaseSettings):
     HTTP_PROXY: str | None = None
     HTTPS_PROXY: str | None = None
 
-    # ---- AI（本期未接入） ----
+    # ---- AI（百炼 OpenAI 兼容接口；B-07 拍板：qwen-flash 分类 + qwen-plus 生成） ----
     DASHSCOPE_API_KEY: str = ""
     DASHSCOPE_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-    LLM_MODEL_CLASSIFY: str = "qwen3.8-flash"
+    LLM_MODEL_CLASSIFY: str = "qwen-flash"
     LLM_MODEL_GENERATE: str = "qwen-plus"
     LLM_MODEL_HARD: str = "qwen3.8-max"
     LLM_RESPONSE_FORMAT: str = "json_object"
@@ -72,7 +72,21 @@ class Settings(BaseSettings):
     PREPROCESS_CONCURRENCY: int = 4        # AI 并发，受 LLM_DAILY_TOKEN_BUDGET 约束
     EVENT_CONFIDENCE_MIN: float = 0.7      # 进 candidate 的置信度门槛（05 §6.5）
     NOT_EVENT_CONFIDENCE_MIN: float = 0.8  # 直接判 not_event 的置信度门槛（05 §6.5）
-    PROMPT_VERSION: str = "v1"             # 写进 ai_run.prompt_version，改 prompt 必须升版本
+    PROMPT_VERSION: str = "v2"             # 写进 ai_run.prompt_version，改 prompt 必须升版本
+
+    # ---- 去重与时效门禁（06） ----
+    DEDUP_TRGM_THRESHOLD: float = 0.65     # pg_trgm 即时去重相似度阈值
+    DEDUP_WINDOW_HOURS: int = 72           # 即时去重检索窗口（小时）
+    FRESHNESS_HOURS: int = 48              # 推送时效门禁（需求 §6/§8：48 小时内）
+    FUTURE_EVENT_MAX_DAYS: int = 7         # 未来事件（如小行星飞掠）放行上限（天）
+
+    # ---- AI 内容加工（07） ----
+    GENERATE_BATCH_SIZE: int = 20          # 每轮加工条数
+    GENERATE_CONCURRENCY: int = 2          # 文案生成并发
+    GENERATE_PROMPT_VERSION: str = "gen-v1"
+    # B-05 标题去标点字数口径：建议 10—18，放行 7—18，硬上限 20
+    TITLE_MIN_CHARS: int = 7
+    TITLE_MAX_CHARS: int = 20
 
     # ---- 其它 ----
     REPLAY_MODE: bool = False

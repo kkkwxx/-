@@ -49,9 +49,15 @@ def session(engine) -> Iterator[Session]:
 
 
 @pytest.fixture(autouse=True)
-def _reset_http_client() -> Iterator[None]:
+def _reset_http_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    from app.services import ai as ai_module
+
+    # 强制单测隔离真实 AI Key，避免本地 .env 有真实 Key 时意外消耗 Token
+    monkeypatch.setattr(settings, "DASHSCOPE_API_KEY", "")
+    ai_module.reset_client()
     fetch_module.reset_client()
     yield
+    ai_module.reset_client()
     fetch_module.reset_client()
 
 

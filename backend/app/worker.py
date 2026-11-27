@@ -1,11 +1,10 @@
 """独立 Worker 进程（`python -m app.worker`）。
 
-口径：04-采集 §1.2 / §1.3 / §1.4。
-
-* 与 API 分离：API 只写 ``task_run(pending)``，Worker 捞。
-* **tick 只派发，绝不执行**：把活丢进线程池立即返回，否则慢源会把后续 tick 全拖垮。
-* 四个 job：``tick``（30 s）、``poll_pending``（30 s）、``fetch_full_text``（60 s）、
-  ``preprocess``（60 s，05-预处理与事件判定）。
+优化升级：
+- 五个 job：``tick``（30 s）、``poll_pending``（30 s）、``fetch_full_text``（60 s）、
+  ``preprocess``（60 s，含 06 去重与时效）、``generate_content``（60 s，07 AI 文案加工）；
+- 为批处理任务增加数据库级防重入锁（``_has_running_task``），杜绝单批耗时超 60s 时的重复投递与重复扣费；
+- 启动时回收超时 ``running`` 的 ``task_run`` 以及卡在 ``processing`` 的僵尸 ``article``。
 """
 
 from __future__ import annotations
@@ -24,7 +23,7 @@ from app.core.db import SessionLocal
 from app.core.logging import setup_logging
 from app.models.pipeline import RawItem
 from app.models.task import TaskRun
-from app.services import collector, fulltext, preprocess, recalc
+from app.services import collector, fulltext, generator, preprocess, recalc, scheduler_control
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +31,16 @@ logger = logging.getLogger(__name__)
 _executor = ThreadPoolExecutor(max_workers=settings.CRAWL_SOURCE_CONCURRENCY)
 
 _shutdown = Event()
+
+
+def _has_running_task(session, task_type: str) -> bool:
+    """防重入锁：同类全局批任务仍有 running 记录时本轮跳过投递。"""
+    exists = session.execute(
+        select(TaskRun.id)
+        .where(TaskRun.task_type == task_type, TaskRun.status == "running")
+        .limit(1)
+    ).first()
+    return exists is not None
 
 
 def _find_pending_recalc_runs(session) -> list[int]:
@@ -48,18 +57,57 @@ def _count_pending_full_text(session) -> int:
         session.execute(
             select(func.count())
             .select_from(RawItem)
-            .where(RawItem.full_text_status == "pending", RawItem.url.is_not(None))
+            .where(
+                RawItem.full_text_status == "pending",
+                RawItem.url.is_not(None),
+                RawItem.resolved_url.is_not(None),
+            )
         ).scalar_one()
         or 0
     )
 
 
 def tick() -> None:
-    """30 s 一次：只查表 + 投递，立即返回。"""
+    """30 s 一次：受调度策略控制（manual/静默窗跳过；fixed_times 命中定点触发一次）。"""
     if _shutdown.is_set():
         return
     session = SessionLocal()
     try:
+        # 1) 固定时间点模式：检查是否命中未执行的定点槽
+        slot_key, cfg = scheduler_control.claim_due_fixed_slot(session)
+        if slot_key is not None:
+            action = (
+                "full"
+                if (cfg.crawl_enabled and cfg.ai_enabled)
+                else "crawl_only"
+                if cfg.crawl_enabled
+                else "ai_only"
+            )
+            try:
+                run = scheduler_control.start_pipeline_run(
+                    session,
+                    action=action,  # type: ignore[arg-type]
+                    max_items=int(cfg.max_ai_items_per_run or 5),
+                    triggered_by="scheduler",
+                    spawn_thread=True,
+                )
+                logger.info(
+                    "命中定点调度槽 %s，已启动 pipeline_run=%s（action=%s max_items=%s）",
+                    slot_key,
+                    run.id,
+                    action,
+                    cfg.max_ai_items_per_run,
+                )
+            except Exception:
+                logger.warning("定点调度槽 %s 触发跳过（可能已有任务运行中）", slot_key)
+            return
+
+        # 2) 活跃时间窗模式：仅在允许采集时段拉取到期源
+        allowed, _max_items = scheduler_control.should_worker_run_auto(
+            session, stage="crawl"
+        )
+        if not allowed:
+            return
         source_ids = collector.find_due_sources(session)
     except Exception:
         logger.exception("tick 查到期源失败")
@@ -68,13 +116,13 @@ def tick() -> None:
         session.close()
 
     for source_id in source_ids:
-        _executor.submit(collector.poll_source, source_id)  # 不 join、不 wait
+        _executor.submit(collector.poll_source, source_id)
     if source_ids:
         logger.info("本轮到期 %s 个源，已投递", len(source_ids))
 
 
 def poll_pending() -> None:
-    """30 s 一次：消化后台"立即采集"与"重算等级"产生的 pending 任务。"""
+    """30 s 一次：消化后台“立即采集”与“重算等级”产生的 pending 任务。"""
     if _shutdown.is_set():
         return
     session = SessionLocal()
@@ -92,17 +140,23 @@ def poll_pending() -> None:
     for run_id in recalc_ids:
         _executor.submit(recalc.run_recalc_task, run_id)
     if poll_ids or recalc_ids:
-        logger.info(
-            "待处理任务：poll=%s recalc=%s", len(poll_ids), len(recalc_ids)
-        )
+        logger.info("待处理任务：poll=%s recalc=%s", len(poll_ids), len(recalc_ids))
 
 
 def fetch_full_text() -> None:
-    """60 s 一次：有 pending 条目就开一个任务，一批最多 FULL_TEXT_BATCH_SIZE 条。"""
+    """60 s 一次：受调度策略控制，仅在允许自动采集时段补全正文。"""
     if _shutdown.is_set():
         return
     session = SessionLocal()
     try:
+        allowed, _max_items = scheduler_control.should_worker_run_auto(
+            session, stage="crawl"
+        )
+        if not allowed:
+            return
+        if _has_running_task(session, "fetch_full_text"):
+            logger.debug("fetch_full_text 已有批次运行中，本轮跳过")
+            return
         pending = _count_pending_full_text(session)
         if pending <= 0:
             return
@@ -127,17 +181,20 @@ def fetch_full_text() -> None:
     _executor.submit(fulltext.run_full_text_batch, run_id)
 
 
-
 def run_preprocess() -> None:
-    """60 s 一次：有 ingested 条目就投递一批预处理（05 §2 / §9）。
-
-    只做 ``SELECT EXISTS`` 级别的判断，真正的活丢进线程池立即返回——
-    一批最多 ``PREPROCESS_BATCH_SIZE`` 条，AI 调用在其中自带并发。
-    """
+    """60 s 一次：受调度策略控制，仅在允许自动 AI 时段且按条数上限执行预处理。"""
     if _shutdown.is_set():
         return
     session = SessionLocal()
     try:
+        allowed, max_items = scheduler_control.should_worker_run_auto(
+            session, stage="ai"
+        )
+        if not allowed:
+            return
+        if _has_running_task(session, "preprocess"):
+            logger.debug("preprocess 已有批次运行中，本轮跳过")
+            return
         pending = preprocess.count_pending(session)
     except Exception:
         logger.exception("preprocess 查询待处理条目失败")
@@ -147,12 +204,45 @@ def run_preprocess() -> None:
 
     if pending <= 0:
         return
+    eff_limit = min(int(settings.PREPROCESS_BATCH_SIZE), max_items)
     logger.info(
         "预处理：待处理 %s 条，投递一批（上限 %s）",
         pending,
-        settings.PREPROCESS_BATCH_SIZE,
+        eff_limit,
     )
-    _executor.submit(preprocess.run_preprocess_batch)  # 不 join、不 wait
+    _executor.submit(preprocess.run_preprocess_batch, eff_limit)
+
+
+def run_generate() -> None:
+    """60 s 一次：受调度策略控制，仅在允许自动 AI 时段且按条数上限执行文案生成。"""
+    if _shutdown.is_set():
+        return
+    session = SessionLocal()
+    try:
+        allowed, max_items = scheduler_control.should_worker_run_auto(
+            session, stage="ai"
+        )
+        if not allowed:
+            return
+        if _has_running_task(session, "generate_content"):
+            logger.debug("generate_content 已有批次运行中，本轮跳过")
+            return
+        pending = generator.count_judged(session)
+    except Exception:
+        logger.exception("generate_content 查询待加工条目失败")
+        return
+    finally:
+        session.close()
+
+    if pending <= 0:
+        return
+    eff_limit = min(int(settings.GENERATE_BATCH_SIZE), max_items)
+    logger.info(
+        "AI 加工：待加工 %s 条，投递一批（上限 %s）",
+        pending,
+        eff_limit,
+    )
+    _executor.submit(generator.run_generate_batch, eff_limit)
 
 
 def _reclaim() -> None:
@@ -160,7 +250,7 @@ def _reclaim() -> None:
     try:
         count = collector.reclaim_stale_runs(session)
         if count:
-            logger.warning("回收卡住的 running 任务 %s 条", count)
+            logger.warning("回收卡住的 running 任务 / processing 文章共 %s 条", count)
     except Exception:
         logger.exception("回收卡住任务失败")
     finally:
@@ -187,7 +277,7 @@ def main() -> None:
     setup_logging()
     logger.info(
         "Worker 启动：并发 %s，job：tick 30s / poll_pending 30s / fetch_full_text 60s / "
-        "preprocess 60s",
+        "preprocess 60s / generate_content 60s",
         settings.CRAWL_SOURCE_CONCURRENCY,
     )
     _reclaim()
@@ -229,10 +319,29 @@ def main() -> None:
         misfire_grace_time=300,
         id="preprocess",
     )
+    scheduler.add_job(
+        run_generate,
+        "interval",
+        seconds=60,
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=300,
+        id="generate_content",
+    )
+    # 周期性回收超时 running 任务与僵尸 processing 文章，避免长运行过程中卡死
+    scheduler.add_job(
+        _reclaim,
+        "interval",
+        minutes=10,
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=300,
+        id="reclaim_stale",
+    )
 
     try:
         signal.signal(signal.SIGTERM, _handle_sigterm)
-    except (ValueError, AttributeError):  # 非主线程 / 平台不支持时忽略
+    except (ValueError, AttributeError):
         logger.debug("SIGTERM 处理注册失败，忽略")
 
     try:

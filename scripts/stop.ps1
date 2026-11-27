@@ -1,4 +1,4 @@
-# 停止开发进程（不动数据库，数据保留）
+﻿# 停止开发进程（不动数据库，数据保留）
 # 用法：powershell -ExecutionPolicy Bypass -File .\scripts\stop.ps1
 $ErrorActionPreference = 'Continue'
 $root = Split-Path -Parent $PSScriptRoot
@@ -17,4 +17,4 @@ Write-Host '== 停止数据库容器 ==' -ForegroundColor Cyan
 Set-Location $root
 docker compose stop db
 
-Write-Host '完成（数据卷保留，如需清库用 scripts/reset-db.ps1）' -ForegroundColor Green
+Write-Host '完成（数据卷保留，如需清空数据库重建请执行：docker compose down -v）' -ForegroundColor Green

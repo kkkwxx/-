@@ -373,6 +373,19 @@ def test_classify_without_key_is_skipped(rules, monkeypatch):
     assert judged.is_event is None
 
 
+def test_thai_taoist_variety_show_not_hard_rejected(rules):
+    """需求 §10 核心验收例：泰国灵异综艺中国道士参赛绝不能被硬排除误杀，应被白名单救回。"""
+    result = stage_filter(
+        "泰国灵异综艺《UNSEEN：通灵者之战》中国道士参赛引发讨论",
+        None,
+        source_level="B",
+        rules=rules,
+    )
+    assert result.hard is None
+    assert "anomaly_psychic" in result.anchors
+    assert result.whitelisted is True
+
+
 # --------------------------------------------------------------------------- #
 # seed 幂等（05 §3 / 03 §10.2）
 # --------------------------------------------------------------------------- #
@@ -381,5 +394,5 @@ def test_classify_without_key_is_skipped(rules, monkeypatch):
 def test_seed_keyword_rules_is_idempotent(session):
     first = seed_keyword_rules(session)
     second = seed_keyword_rules(session)
-    assert first == second == 15
-    assert session.query(KeywordRule).count() == 15
+    assert first == second == 16
+    assert session.query(KeywordRule).count() == 16

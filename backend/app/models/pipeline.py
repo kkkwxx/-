@@ -12,9 +12,11 @@ from sqlalchemy import (
     Index,
     Integer,
     Numeric,
+    SmallInteger,
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -94,15 +96,46 @@ class Article(Base, TimestampMixin):
     title_fingerprint: Mapped[str | None] = mapped_column(Text)
     dup_sources: Mapped[list[int]] = mapped_column(JSONB, nullable=False, default=list)
 
-    # ---- 下游字段（05 起写入，这里先建列，避免后续迁移改表）----
+    # ---- 下游字段（05 预处理 + 06 去重时效 + 07 AI 加工，对齐需求 §9）----
     is_event: Mapped[bool | None] = mapped_column(Boolean)
     event_type: Mapped[str | None] = mapped_column(String(32))
     event_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    first_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    is_future_event: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    event_cluster_id: Mapped[int | None] = mapped_column(
+        ForeignKey("event_cluster.id", ondelete="SET NULL"), index=True
+    )
+    entities: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    event_action: Mapped[str | None] = mapped_column(String(64))
+
     content_nature: Mapped[str | None] = mapped_column(String(32))
     # 05 §6.4：AI 给的事件置信度，进 candidate 的门槛见 EVENT_CONFIDENCE_MIN
     event_confidence: Mapped[float | None] = mapped_column(Numeric(3, 2))
     risk_flags: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
     review_priority: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    # ---- 07 AI 内容加工字段（需求 §7 / §9）----
+    fact_anchor: Mapped[str | None] = mapped_column(Text)
+    title_candidates: Mapped[list[dict]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    title_final: Mapped[str | None] = mapped_column(Text)
+    body_lead: Mapped[str | None] = mapped_column(Text)
+    body_summary: Mapped[str | None] = mapped_column(Text)
+    hook_score: Mapped[int | None] = mapped_column(SmallInteger)
+    style_tag: Mapped[str | None] = mapped_column(String(32))
+    need_review: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
+    culture_tag: Mapped[str | None] = mapped_column(String(32))
+    evidence_notes: Mapped[list[dict]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    ai_generated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="ingested")
     reject_reason: Mapped[str | None] = mapped_column(Text)
@@ -119,10 +152,11 @@ class Article(Base, TimestampMixin):
             name="ck_article_event_type",
         ),
         CheckConstraint(
-            "status IN ('ingested','rule_rejected','duplicate','processing','candidate',"
-            "'pending','approved','rejected','published','unpublished')",
+            "status IN ('ingested','rule_rejected','duplicate','processing','judged',"
+            "'expired','candidate','pending','approved','rejected','published','unpublished')",
             name="ck_article_status",
         ),
         Index("ix_article_status_level", "status", "source_level"),
         Index("ix_article_url_hash", "url_hash"),
+        Index("ix_article_title_fp", "title_fingerprint"),
     )

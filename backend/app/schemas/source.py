@@ -158,6 +158,11 @@ class SourceListItem(ORMModel):
     name: str
     type: SourceType
     level: Level
+    url: str | None = None
+    api_key_env: str | None = None
+    api_key_mask: str | None = None
+    key_configured: bool = False
+    note: str | None = None
     poll_interval_min: int
     enabled: bool
     health_status: HealthStatus
@@ -212,6 +217,7 @@ class SourceDetail(ORMModel):
     title_suffix_rules: list[str] = Field(default_factory=list)
     extra_headers: dict[str, str] = Field(default_factory=dict)
     api_key_env: str | None = None
+    api_key_mask: str | None = None
     note: str | None = None
     last_validated_at: UTCDateTimeOpt = None
 
@@ -263,6 +269,7 @@ class SourceCreate(BaseModel):
     title_suffix_rules: list[str] = Field(default_factory=list)
     extra_headers: dict[str, str] = Field(default_factory=dict)
     api_key_env: str | None = None
+    api_key: str | None = None
     note: str | None = None
 
 
@@ -287,6 +294,8 @@ class SourceUpdate(BaseModel):
     title_suffix_rules: list[str] | None = None
     extra_headers: dict[str, str] | None = None
     api_key_env: str | None = None
+    api_key: str | None = None
+    clear_api_key: bool = False
     note: str | None = None
 
     # ---- 运行态：只为"收到后报错"，路由不会写它们 ----
