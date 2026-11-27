@@ -15,7 +15,7 @@ const SchedulePage = lazy(() => import("./pages/admin/SchedulePage"));
 
 function PageFallback() {
   return (
-    <div style={{ padding: 48, textAlign: "center", color: "#64748b" }}>
+    <div style={{ padding: 48, textAlign: "center", color: "#4d625e" }}>
       页面加载中...
     </div>
   );

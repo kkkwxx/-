@@ -130,7 +130,7 @@ export default function RiskPolicyCard({ compact = false }: Props) {
         loading={loading && !policy}
         title={
           <Space>
-            <SafetyCertificateOutlined style={{ color: "#1677ff" }} />
+            <SafetyCertificateOutlined style={{ color: "var(--mn-primary)" }} />
             <span>风控严厉度策略选择器</span>
             <Tag color={PROFILE_BADGE[profile].color}>{PROFILE_BADGE[profile].label}</Tag>
             {policy?.has_custom_overrides && <Tag color="purple">含自定义阈值</Tag>}
@@ -178,7 +178,7 @@ export default function RiskPolicyCard({ compact = false }: Props) {
       loading={loading && !policy}
       title={
         <Space>
-          <SafetyCertificateOutlined style={{ color: "#1677ff" }} />
+          <SafetyCertificateOutlined style={{ color: "var(--mn-primary)" }} />
           <span>风控严厉度档位开关与阈值动态配置</span>
           <Tag color={PROFILE_BADGE[profile].color}>{PROFILE_BADGE[profile].label}</Tag>
           {policy?.has_custom_overrides && <Tag color="purple">自定义微调生效中</Tag>}
@@ -235,7 +235,7 @@ export default function RiskPolicyCard({ compact = false }: Props) {
 
         <Row gutter={[16, 12]}>
           <Col xs={12} md={8} lg={4}>
-            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>
+            <div style={{ fontSize: 12, color: "var(--mn-text-secondary)", marginBottom: 4 }}>
               进候选池置信度门槛
             </div>
             <InputNumber
@@ -248,7 +248,7 @@ export default function RiskPolicyCard({ compact = false }: Props) {
             />
           </Col>
           <Col xs={12} md={8} lg={4}>
-            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>
+            <div style={{ fontSize: 12, color: "var(--mn-text-secondary)", marginBottom: 4 }}>
               直接判非事件置信度
             </div>
             <InputNumber
@@ -261,7 +261,7 @@ export default function RiskPolicyCard({ compact = false }: Props) {
             />
           </Col>
           <Col xs={12} md={8} lg={4}>
-            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>
+            <div style={{ fontSize: 12, color: "var(--mn-text-secondary)", marginBottom: 4 }}>
               推送时效门禁（小时）
             </div>
             <InputNumber
@@ -274,7 +274,7 @@ export default function RiskPolicyCard({ compact = false }: Props) {
             />
           </Col>
           <Col xs={12} md={8} lg={4}>
-            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>
+            <div style={{ fontSize: 12, color: "var(--mn-text-secondary)", marginBottom: 4 }}>
               去重相似度阈值
             </div>
             <InputNumber
@@ -287,7 +287,7 @@ export default function RiskPolicyCard({ compact = false }: Props) {
             />
           </Col>
           <Col xs={12} md={8} lg={4}>
-            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>
+            <div style={{ fontSize: 12, color: "var(--mn-text-secondary)", marginBottom: 4 }}>
               标题去标点字数区间
             </div>
             <Space.Compact style={{ width: "100%" }}>
@@ -308,7 +308,7 @@ export default function RiskPolicyCard({ compact = false }: Props) {
             </Space.Compact>
           </Col>
           <Col xs={12} md={8} lg={4}>
-            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>
+            <div style={{ fontSize: 12, color: "var(--mn-text-secondary)", marginBottom: 4 }}>
               无全文强制进待定池
             </div>
             <div style={{ paddingTop: 4 }}>

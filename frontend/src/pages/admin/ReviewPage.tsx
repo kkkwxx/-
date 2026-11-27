@@ -324,7 +324,7 @@ export default function ReviewPage() {
           label: (
             <Space size={6}>
               <span>{t.label}</span>
-              <Badge count={tabCount(t.key)} showZero color="#64748b" overflowCount={999} />
+              <Badge count={tabCount(t.key)} showZero color="var(--mn-text-tertiary)" overflowCount={999} />
             </Space>
           ),
         }))}
@@ -615,7 +615,7 @@ export default function ReviewPage() {
                       whiteSpace: "pre-wrap",
                       fontSize: 13,
                       lineHeight: 1.65,
-                      background: "#f8fafc",
+                      background: "var(--mn-surface-muted)",
                       padding: 10,
                       borderRadius: 6,
                     }}
@@ -678,9 +678,9 @@ export default function ReviewPage() {
                             borderRadius: 6,
                             border:
                               titleFinal === cand.title
-                                ? "1.5px solid #1677ff"
-                                : "1px solid #e5e7eb",
-                            background: titleFinal === cand.title ? "#eff6ff" : "#fff",
+                                ? "1.5px solid var(--mn-primary)"
+                                : "1px solid var(--mn-border)",
+                            background: titleFinal === cand.title ? "var(--mn-primary-soft)" : "var(--mn-surface)",
                             display: "flex",
                             justifyContent: "space-between",
                             alignItems: "center",
@@ -689,7 +689,7 @@ export default function ReviewPage() {
                           <div>
                             <strong>{cand.title}</strong>
                             {cand.rationale && (
-                              <div style={{ fontSize: 12, color: "#64748b" }}>{cand.rationale}</div>
+                              <div style={{ fontSize: 12, color: "var(--mn-text-secondary)" }}>{cand.rationale}</div>
                             )}
                           </div>
                           <Space size={4}>
@@ -798,9 +798,9 @@ export default function ReviewPage() {
                       >
                         <span>
                           {c.passed ? (
-                            <CheckCircleOutlined style={{ color: "#52c41a", marginRight: 6 }} />
+                            <CheckCircleOutlined style={{ color: "var(--mn-success)", marginRight: 6 }} />
                           ) : (
-                            <CloseCircleOutlined style={{ color: "#ff4d4f", marginRight: 6 }} />
+                            <CloseCircleOutlined style={{ color: "var(--mn-danger)", marginRight: 6 }} />
                           )}
                           {c.label}
                         </span>
@@ -824,7 +824,7 @@ export default function ReviewPage() {
                     </Button>
                     <Button
                       type="primary"
-                      style={{ background: "#16a34a" }}
+                      style={{ background: "var(--mn-success)" }}
                       icon={<SendOutlined />}
                       onClick={handlePublish}
                       loading={saving}

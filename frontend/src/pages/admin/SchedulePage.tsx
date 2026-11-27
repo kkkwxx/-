@@ -27,7 +27,6 @@ import {
   ReloadOutlined,
   RobotOutlined,
   SaveOutlined,
-  ScheduleOutlined,
   ThunderboltOutlined,
 } from "@ant-design/icons";
 import { apiFetch, buildQuery, type Schemas } from "../../api/client";
@@ -256,13 +255,10 @@ export default function SchedulePage() {
 
   return (
     <Space direction="vertical" size={16} style={{ width: "100%" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Space>
-          <ScheduleOutlined style={{ fontSize: 20, color: "#1677ff" }} />
-          <Typography.Title level={4} style={{ margin: 0 }}>
-            采集与 AI 调度控制中心
-          </Typography.Title>
-        </Space>
+      <div className="mn-page-head">
+        <span className="mn-faint">
+          时间策略、手动触发与运行记录
+        </span>
         <Button icon={<ReloadOutlined />} onClick={() => loadAll(false)} loading={loading}>
           刷新状态
         </Button>
@@ -322,7 +318,7 @@ export default function SchedulePage() {
             <Statistic
               title="待定复核池（pending）"
               value={q.pending || 0}
-              valueStyle={{ color: "#fa8c16" }}
+              valueStyle={{ color: "var(--mn-warning)" }}
             />
           </Card>
         </Col>
@@ -331,7 +327,7 @@ export default function SchedulePage() {
             <Statistic
               title="常规候选池（candidate）"
               value={q.candidate || 0}
-              valueStyle={{ color: "#1677ff" }}
+              valueStyle={{ color: "var(--mn-primary)" }}
             />
           </Card>
         </Col>
@@ -341,7 +337,7 @@ export default function SchedulePage() {
       <Card
         title={
           <Space>
-            <ThunderboltOutlined style={{ color: "#fa8c16" }} />
+            <ThunderboltOutlined style={{ color: "var(--mn-warning)" }} />
             <span>现在立即获取（按需手动执行，无需单独开启 Worker 窗口）</span>
           </Space>
         }
@@ -401,7 +397,7 @@ export default function SchedulePage() {
       <Card
         title={
           <Space>
-            <ClockCircleOutlined style={{ color: "#1677ff" }} />
+            <ClockCircleOutlined style={{ color: "var(--mn-primary)" }} />
             <span>自动获取时间策略（控制什么时间跑、什么时间静默不烧额度）</span>
           </Space>
         }
@@ -648,7 +644,7 @@ export default function SchedulePage() {
                 <div>
                   <span>{formatRunStats(r.task_type, r.stats_json)}</span>
                   {r.error && (
-                    <div style={{ color: "#ef4444", fontSize: 12, marginTop: 2 }}>
+                    <div style={{ color: "var(--mn-danger)", fontSize: 12, marginTop: 2 }}>
                       错误：{r.error}
                     </div>
                   )}

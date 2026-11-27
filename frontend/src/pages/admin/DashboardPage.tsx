@@ -9,14 +9,21 @@ import {
   Row,
   Space,
   Spin,
-  Statistic,
   Table,
   Tag,
   Typography,
 } from "antd";
-import { ReloadOutlined, ScheduleOutlined } from "@ant-design/icons";
+import {
+  AuditOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  CloudDownloadOutlined,
+  ReloadOutlined,
+  ScheduleOutlined,
+} from "@ant-design/icons";
 import { apiFetch, type Schemas } from "../../api/client";
 import RiskPolicyCard from "../../components/RiskPolicyCard";
+import VerticalColumnChart from "../../components/VerticalColumnChart";
 import {
   ARTICLE_STATUS_META,
   EVENT_TYPE_META,
@@ -55,19 +62,70 @@ export default function DashboardPage() {
 
   const p = data?.pipeline_counts || {};
   const tokenPercent = Math.round((data?.token_usage_ratio || 0) * 100);
+  const tokenBudget = data?.daily_token_budget || 200000;
+
+  const kpis = [
+    {
+      key: "candidate",
+      label: "常规候选池待审",
+      value: p.candidate || 0,
+      suffix: "",
+      sub: "等待人工过审",
+      tone: "blue",
+      icon: <AuditOutlined />,
+      to: "/admin/review?status=candidate",
+    },
+    {
+      key: "pending",
+      label: "待定复核池",
+      value: p.pending || 0,
+      suffix: "",
+      sub: "C 级 / 灵异 / 高风险",
+      tone: "amber",
+      icon: <ClockCircleOutlined />,
+      to: "/admin/review?status=pending",
+    },
+    {
+      key: "approved",
+      label: "已审待发布",
+      value: p.approved || 0,
+      suffix: `/ ${data?.active_published_total || 0} 在线`,
+      sub: "在线栏目已发布内容",
+      tone: "green",
+      icon: <CheckCircleOutlined />,
+      to: "/admin/review?status=approved",
+    },
+    {
+      key: "ingested",
+      label: "今日采集",
+      value: data?.today_ingested || 0,
+      suffix: "",
+      sub: `未收录域名 ${data?.unknown_domain_count || 0} 个`,
+      tone: "slate",
+      icon: <CloudDownloadOutlined />,
+      to: "/admin/sources",
+    },
+  ];
+
+  const eventCounts = Object.entries(EVENT_TYPE_META).map(([key, meta]) => ({
+    key,
+    label: meta.short,
+    value: data?.event_type_counts?.[key] || 0,
+  }));
+  const eventTotal = eventCounts.reduce((sum, item) => sum + item.value, 0) || 1;
+  const eventBars = eventCounts.map((item) => ({
+    ...item,
+    extra: { label: "占比", value: `${Math.round((item.value / eventTotal) * 100)}%` },
+  }));
 
   return (
-    <Space direction="vertical" size={16} style={{ width: "100%" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          运营监控总览
-        </Typography.Title>
+    <Space direction="vertical" size={14} style={{ width: "100%" }}>
+      <div className="mn-page-head">
+        <span className="mn-faint">指标来自最近一次加载，可随时手动刷新</span>
         <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>
           刷新指标
         </Button>
       </div>
-
-      <RiskPolicyCard compact />
 
       {schedule && (
         <Alert
@@ -102,64 +160,63 @@ export default function DashboardPage() {
         />
       )}
 
-      <Row gutter={16}>
-        <Col xs={12} md={6}>
-          <Card hoverable onClick={() => navigate("/admin/review?status=candidate")}>
-            <Statistic
-              title="常规候选池待审"
-              value={p.candidate || 0}
-              valueStyle={{ color: "#1677ff" }}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} md={6}>
-          <Card hoverable onClick={() => navigate("/admin/review?status=pending")}>
-            <Statistic
-              title="待定复核池（C级/灵异/高风险）"
-              value={p.pending || 0}
-              valueStyle={{ color: "#fa8c16" }}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} md={6}>
-          <Card hoverable onClick={() => navigate("/admin/review?status=approved")}>
-            <Statistic
-              title="已审待发布 / 在线栏目数"
-              value={p.approved || 0}
-              suffix={`/ ${data?.active_published_total || 0}`}
-              valueStyle={{ color: "#52c41a" }}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} md={6}>
-          <Card hoverable onClick={() => navigate("/admin/sources")}>
-            <Statistic
-              title="今日采集 / 未收录域名"
-              value={data?.today_ingested || 0}
-              suffix={`/ ${data?.unknown_domain_count || 0}`}
-            />
-          </Card>
-        </Col>
-      </Row>
+      <div className="mn-kpi-grid">
+        {kpis.map((kpi) => (
+          <button
+            type="button"
+            key={kpi.key}
+            className={`mn-kpi mn-kpi--${kpi.tone}`}
+            onClick={() => navigate(kpi.to)}
+          >
+            <span className={`mn-kpi-icon mn-kpi-icon--${kpi.tone}`}>{kpi.icon}</span>
+            <span className="mn-kpi-body">
+              <span className="mn-kpi-label">{kpi.label}</span>
+              <span className="mn-kpi-value">
+                {kpi.value}
+                {kpi.suffix && <em>{kpi.suffix}</em>}
+              </span>
+              <span className="mn-kpi-sub">{kpi.sub}</span>
+            </span>
+          </button>
+        ))}
+      </div>
 
-      <Row gutter={16}>
-        <Col xs={24} lg={12}>
-          <Card title="今日 AI Token 预算消耗">
+      <Row gutter={[14, 14]}>
+        <Col xs={24} xl={15}>
+          <Card styles={{ body: { padding: 16 } }}>
+            <VerticalColumnChart
+              data={eventBars}
+              title="五大栏目分布"
+              subtitle="按事件聚类统计 · 点击条目可选中"
+              ranges={[{ key: "all", label: "当前全量" }]}
+              range="all"
+              legend="条数"
+              valueFormatter={(v) => `${v} 条`}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} xl={9}>
+          <Card title="今日 AI Token 预算" extra={<span className="mn-faint">超预算自动熔断</span>}>
+            <div className="mn-meter-value">
+              <strong>{(data?.today_tokens || 0).toLocaleString()}</strong>
+              <span> / {tokenBudget.toLocaleString()} tokens</span>
+            </div>
             <Progress
               percent={tokenPercent}
-              status={tokenPercent >= 90 ? "exception" : "active"}
+              showInfo={false}
+              status={tokenPercent >= 90 ? "exception" : "normal"}
+              strokeColor="var(--mn-primary)"
+              trailColor="var(--mn-accent-soft)"
             />
-            <Typography.Text type="secondary">
-              已消耗 {(data?.today_tokens || 0).toLocaleString()} /{" "}
-              {(data?.daily_token_budget || 200000).toLocaleString()} tokens（超预算自动熔断）
-            </Typography.Text>
-          </Card>
-        </Col>
-        <Col xs={24} lg={12}>
-          <Card title="全链路状态分布">
-            <Space wrap>
+            <div className="mn-meter-foot">
+              <span>已用 {tokenPercent}%</span>
+              <span>剩余 {Math.max(0, 100 - tokenPercent)}%</span>
+            </div>
+            <div className="mn-divider" />
+            <div className="mn-legend-title">全链路状态分布</div>
+            <Space wrap size={8}>
               {Object.entries(ARTICLE_STATUS_META).map(([key, meta]) => (
-                <Tag key={key} color={meta.color} style={{ padding: "4px 10px", fontSize: 13 }}>
+                <Tag key={key} color={meta.color}>
                   {meta.label}：{p[key] || 0}
                 </Tag>
               ))}
@@ -168,25 +225,8 @@ export default function DashboardPage() {
         </Col>
       </Row>
 
-      <Row gutter={16}>
-        <Col xs={24} lg={10}>
-          <Card title="五大栏目分布">
-            <Space direction="vertical" style={{ width: "100%" }}>
-              {Object.entries(EVENT_TYPE_META).map(([k, meta]) => (
-                <div
-                  key={k}
-                  style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}
-                >
-                  <span>
-                    <Tag color={meta.color}>{meta.label}</Tag>
-                  </span>
-                  <strong>{data?.event_type_counts?.[k] || 0} 条</strong>
-                </div>
-              ))}
-            </Space>
-          </Card>
-        </Col>
-        <Col xs={24} lg={14}>
+      <Row gutter={[14, 14]}>
+        <Col xs={24} xl={15}>
           <Card
             title="异常信源告警"
             extra={
@@ -225,7 +265,37 @@ export default function DashboardPage() {
             )}
           </Card>
         </Col>
+        <Col xs={24} xl={9}>
+          <Card title="今日发布概况">
+            <div className="mn-stat-lines">
+              <div className="mn-stat-line">
+                <span>今日发布</span>
+                <strong>{data?.today_published || 0} 条</strong>
+              </div>
+              <div className="mn-stat-line">
+                <span>在线内容总数</span>
+                <strong>{data?.active_published_total || 0} 条</strong>
+              </div>
+              <div className="mn-stat-line">
+                <span>信源健康</span>
+                <strong>
+                  {(data?.source_health_counts?.ok || 0)} 正常 /{" "}
+                  {(data?.source_health_counts?.disabled || 0)} 停用
+                </strong>
+              </div>
+              <div className="mn-stat-line">
+                <span>规则拦截</span>
+                <strong>{p.rule_rejected || 0} 条</strong>
+              </div>
+            </div>
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              数据取自 dashboard/overview，刷新后即时更新。
+            </Typography.Text>
+          </Card>
+        </Col>
       </Row>
+
+      <RiskPolicyCard compact />
     </Space>
   );
 }

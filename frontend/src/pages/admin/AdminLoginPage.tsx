@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Button, Card, ConfigProvider, Form, Input, Space, Spin, Typography, message } from "antd";
+import { Button, ConfigProvider, Form, Input, Spin, message } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
 import { apiFetch, type Schemas } from "../../api/client";
+import adminTheme from "../../theme";
 
 function safeRedirectTarget(raw: string | null): string {
   if (!raw || !raw.startsWith("/admin") || raw.startsWith("/admin/login") || raw.startsWith("//")) {
@@ -60,60 +61,74 @@ export default function AdminLoginPage() {
 
   if (checking) {
     return (
-      <div style={{ display: "grid", placeItems: "center", minHeight: "100vh", background: "#0f172a" }}>
-        <Space direction="vertical" align="center">
+      <div className="mn-boot">
+        <div style={{ textAlign: "center" }}>
           <Spin size="large" />
-          <Typography.Text style={{ color: "#cbd5e1" }}>正在校验登录状态...</Typography.Text>
-        </Space>
+          <div className="mn-faint" style={{ marginTop: 12 }}>
+            正在校验登录状态...
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <ConfigProvider locale={zhCN}>
-      <div
-        style={{
-          display: "grid",
-          placeItems: "center",
-          minHeight: "100vh",
-          background: "linear-gradient(135deg, #0c0c0f 0%, #161829 55%, #1e1b4b 100%)",
-          padding: 16,
-        }}
-      >
-        <Card
-          style={{ width: 390, borderRadius: 12, boxShadow: "0 18px 48px rgba(0,0,0,0.45)" }}
-          title="神秘新闻 · 后台管理系统登录"
-        >
-          <Form layout="vertical" onFinish={handleLogin} autoComplete="off">
-            <Form.Item
-              label="管理员账号"
-              name="username"
-              rules={[{ required: true, message: "请输入管理员账号" }]}
-            >
-              <Input
-                prefix={<UserOutlined style={{ color: "#94a3b8" }} />}
-                placeholder="请输入账号"
-                size="large"
-                autoComplete="username"
-              />
-            </Form.Item>
-            <Form.Item
-              label="登录密码"
-              name="password"
-              rules={[{ required: true, message: "请输入登录密码" }]}
-            >
-              <Input.Password
-                prefix={<LockOutlined style={{ color: "#94a3b8" }} />}
-                placeholder="请输入密码"
-                size="large"
-                autoComplete="current-password"
-              />
-            </Form.Item>
-            <Button type="primary" htmlType="submit" size="large" block loading={submitting}>
-              登录后台
-            </Button>
-          </Form>
-        </Card>
+    <ConfigProvider locale={zhCN} theme={adminTheme}>
+      <div className="mn-login">
+        <div className="mn-login-panel">
+          <div className="mn-login-card">
+            <div className="mn-login-head">
+              <span className="mn-login-mark">神</span>
+              <div>
+                <div className="mn-login-title">神秘新闻 · 运营后台</div>
+                <div className="mn-login-subtitle">全人工审核发布闭环</div>
+              </div>
+            </div>
+            <div className="mn-login-body">
+              <Form layout="vertical" onFinish={handleLogin} autoComplete="off">
+                <Form.Item
+                  label="管理员账号"
+                  name="username"
+                  rules={[{ required: true, message: "请输入管理员账号" }]}
+                >
+                  <Input
+                    prefix={<UserOutlined style={{ color: "var(--mn-text-tertiary)" }} />}
+                    placeholder="请输入账号"
+                    size="large"
+                    autoComplete="username"
+                  />
+                </Form.Item>
+                <Form.Item
+                  label="登录密码"
+                  name="password"
+                  rules={[{ required: true, message: "请输入登录密码" }]}
+                >
+                  <Input.Password
+                    prefix={<LockOutlined style={{ color: "var(--mn-text-tertiary)" }} />}
+                    placeholder="请输入密码"
+                    size="large"
+                    autoComplete="current-password"
+                  />
+                </Form.Item>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  size="large"
+                  block
+                  loading={submitting}
+                  style={{ marginTop: 4 }}
+                >
+                  登录后台
+                </Button>
+              </Form>
+            </div>
+          </div>
+          <div className="mn-login-foot">
+            仅限运营人员使用，登录行为将被记录
+            <br />
+            访问公开栏目页：/column
+          </div>
+        </div>
       </div>
     </ConfigProvider>
   );

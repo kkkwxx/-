@@ -443,7 +443,7 @@ export default function ApisPage() {
                             <strong>{r.name}</strong>
                             <Tag>{VENDOR_LABELS[r.vendor] || r.vendor}</Tag>
                           </Space>
-                          <div style={{ fontSize: 12, color: "#64748b", wordBreak: "break-all" }}>
+                          <div style={{ fontSize: 12, color: "var(--mn-text-secondary)", wordBreak: "break-all" }}>
                             {r.base_url}
                           </div>
                         </div>
@@ -628,7 +628,7 @@ export default function ApisPage() {
                         <div>
                           <strong>{r.name}</strong>{" "}
                           <Typography.Text type="secondary">({r.code})</Typography.Text>
-                          <div style={{ fontSize: 12, color: "#64748b", wordBreak: "break-all" }}>
+                          <div style={{ fontSize: 12, color: "var(--mn-text-secondary)", wordBreak: "break-all" }}>
                             {r.url || "—"}
                           </div>
                         </div>
